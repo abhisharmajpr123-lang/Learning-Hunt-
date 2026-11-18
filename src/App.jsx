@@ -1,103 +1,87 @@
-import { useMemo, useState } from "react";
-import {
-  Search, Bell, Compass, LayoutDashboard, BookOpen, Bookmark,
-  Settings, ChevronRight, Play, Clock3, Star, Flame, Target,
-  Plus, Menu, X, CheckCircle2, GraduationCap, Sparkles
-} from "lucide-react";
+import { useMemo, useState } from 'react';
+import { Activity, ArrowRight, Atom, Bell, BookOpen, Calculator, ChartNoAxesCombined, Check, CheckCircle2, ClipboardCheck, Code2, FileText, FlaskConical, GraduationCap, LayoutDashboard, ListChecks, LogOut, Menu, Plus, Search, ShieldCheck, Users, Video, X } from 'lucide-react';
 
-const courses = [
-  { id: 1, title: "The Complete React Guide", category: "Development", level: "Beginner", lessons: 24, hours: "8h 20m", rating: "4.9", progress: 68, color: "violet", instructor: "Sarah Chen", initials: "SC", enrolled: true },
-  { id: 2, title: "UI Design Fundamentals", category: "Design", level: "Beginner", lessons: 18, hours: "5h 45m", rating: "4.8", progress: 32, color: "orange", instructor: "Alex Morgan", initials: "AM", enrolled: true },
-  { id: 3, title: "Python for Everyone", category: "Development", level: "Beginner", lessons: 32, hours: "11h 10m", rating: "4.9", progress: 0, color: "blue", instructor: "Jordan Lee", initials: "JL", enrolled: false },
-  { id: 4, title: "Digital Marketing Mastery", category: "Business", level: "Intermediate", lessons: 21, hours: "7h 05m", rating: "4.7", progress: 0, color: "pink", instructor: "Priya Kapoor", initials: "PK", enrolled: false },
-  { id: 5, title: "JavaScript: From Zero to Hero", category: "Development", level: "Intermediate", lessons: 28, hours: "9h 30m", rating: "4.9", progress: 0, color: "green", instructor: "Daniel Kim", initials: "DK", enrolled: false },
-  { id: 6, title: "Build Your Creative Portfolio", category: "Design", level: "All levels", lessons: 14, hours: "4h 15m", rating: "4.8", progress: 0, color: "cyan", instructor: "Mia Wilson", initials: "MW", enrolled: false }
+const accounts={
+  developer:{email:'dev@learnhunt.demo',password:'Dev@123',name:'Aarav Developer',initials:'AD'},
+  teacher:{email:'teacher@learnhunt.demo',password:'Teach@123',name:'Priya Sharma',initials:'PS'},
+  student:{email:'student@learnhunt.demo',password:'Study@123',name:'Arjun Mehta',initials:'AM'}
+};
+const seedSubjects=[
+  {id:'math',name:'Mathematics',category:'Science',teacher:'Rahul Sharma',lessons:18,learners:42,description:'Algebra, calculus and confident problem-solving.',icon:'math',color:'blue',published:true},
+  {id:'physics',name:'Physics',category:'Science',teacher:'Priya Sharma',lessons:16,learners:38,description:'Mechanics, electricity, waves and the world around us.',icon:'physics',color:'violet',published:true},
+  {id:'chem',name:'Chemistry',category:'Science',teacher:'Neha Singh',lessons:14,learners:31,description:'Reactions, bonding and organic chemistry.',icon:'chem',color:'orange',published:true},
+  {id:'web',name:'Web Development',category:'Technology',teacher:'Aman Gupta',lessons:22,learners:56,description:'Build responsive websites with HTML, CSS and JavaScript.',icon:'code',color:'green',published:true},
+  {id:'cs',name:'Computer Science',category:'Technology',teacher:'Karan Jain',lessons:20,learners:47,description:'Programming fundamentals, data structures and algorithms.',icon:'code',color:'cyan',published:true},
+  {id:'english',name:'English',category:'Languages',teacher:'Riya Mehta',lessons:12,learners:29,description:'Grammar, communication, reading and writing.',icon:'book',color:'pink',published:true}
 ];
+const initialActivities=[
+  {id:1,type:'video',subject:'Physics',title:'Newton’s laws of motion',detail:'Watched 18 of 22 minutes',date:'Today'},
+  {id:2,type:'quiz',subject:'Mathematics',title:'Quadratic equations quiz',detail:'8 of 10 correct',score:80,date:'Yesterday'},
+  {id:3,type:'assignment',subject:'Web Development',title:'Build a profile card',detail:'Submitted · awaiting review',date:'Yesterday'},
+  {id:4,type:'test',subject:'Chemistry',title:'Chemical bonding test',detail:'Completed',score:76,date:'Mon, 16 Nov'}
+];
+const sampleCourses=[
+  {id:'c1',subject:'math',title:'Algebra foundations',teacher:'Rahul Sharma',lessons:8,progress:75},
+  {id:'c2',subject:'physics',title:'Mechanics: motion and force',teacher:'Priya Sharma',lessons:10,progress:60},
+  {id:'c3',subject:'web',title:'Build your first website',teacher:'Aman Gupta',lessons:12,progress:25},
+  {id:'c4',subject:'chem',title:'Atomic structure',teacher:'Neha Singh',lessons:7,progress:0}
+];
+const demoStudents=[
+  {name:'Arjun Mehta',email:'student@learnhunt.demo',subjects:3,progress:72,quiz:85,assignments:'7/10'},
+  {name:'Sana Khan',email:'sana@learnhunt.demo',subjects:4,progress:84,quiz:91,assignments:'9/10'},
+  {name:'Dev Patel',email:'devpatel@learnhunt.demo',subjects:2,progress:48,quiz:67,assignments:'5/8'},
+  {name:'Isha Verma',email:'isha@learnhunt.demo',subjects:3,progress:63,quiz:78,assignments:'6/8'}
+];
+const IconFor=({name,size=22})=>{const p={size,strokeWidth:1.8};if(name==='math')return <Calculator {...p}/>;if(name==='physics')return <Atom {...p}/>;if(name==='chem')return <FlaskConical {...p}/>;if(name==='book')return <BookOpen {...p}/>;return <Code2 {...p}/>};
+const roleLabel=r=>r[0].toUpperCase()+r.slice(1);
 
-const categories = ["All courses", "Development", "Design", "Business"];
-
-function App() {
-  const [activeTab, setActiveTab] = useState("Discover");
-  const [category, setCategory] = useState("All courses");
-  const [query, setQuery] = useState("");
-  const [joined, setJoined] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  const visibleCourses = useMemo(() => courses.filter((course) => {
-    const matchesCategory = category === "All courses" || course.category === category;
-    const matchesQuery = course.title.toLowerCase().includes(query.toLowerCase()) || course.category.toLowerCase().includes(query.toLowerCase());
-    const matchesTab = activeTab !== "My learning" || course.enrolled || joined.includes(course.id);
-    return matchesCategory && matchesQuery && matchesTab;
-  }), [category, query, activeTab, joined]);
-
-  const joinCourse = (id) => {
-    setJoined((current) => current.includes(id) ? current : [...current, id]);
-    setNotice("Course added to My learning!");
-    window.setTimeout(() => setNotice(""), 2600);
-  };
-
-  const navItems = [
-    { label: "Discover", icon: Compass },
-    { label: "My learning", icon: BookOpen },
-    { label: "Saved courses", icon: Bookmark },
-    { label: "Dashboard", icon: LayoutDashboard }
-  ];
-
-  return (
-    <div className="app-shell">
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand"><div className="brand-mark"><GraduationCap size={21} /></div><span>learn<span className="brand-accent">hunt</span><i>.</i></span></div>
-        <div className="workspace-label">LEARNING SPACE</div>
-        <nav className="side-nav">
-          {navItems.map(({ label, icon: Icon }) => (
-            <button key={label} className={`nav-item ${activeTab === label ? "active" : ""}`} onClick={() => { setActiveTab(label); setSidebarOpen(false); }}>
-              <Icon size={18} /><span>{label}</span>{label === "My learning" && <span className="nav-count">2</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="upgrade-card"><div className="upgrade-icon"><Sparkles size={17} /></div><strong>Keep your momentum</strong><p>Small steps every day lead to big wins.</p><button onClick={() => setNotice("Your learning streak starts today!")}>View your goals <ChevronRight size={14} /></button></div>
-          <button className="nav-item"><Settings size={18} /><span>Settings</span></button>
-          <div className="profile-row"><div className="profile-avatar">AS</div><div className="profile-copy"><strong>Alex Student</strong><span>Free learner</span></div><button className="profile-more" aria-label="Profile options">···</button></div>
-        </div>
-      </aside>
-
-      {sidebarOpen && <button className="mobile-scrim" aria-label="Close menu" onClick={() => setSidebarOpen(false)} />}
-      <main className="main-area">
-        <header className="topbar">
-          <button className="mobile-menu icon-button" aria-label="Open menu" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
-          <div className="breadcrumb">Learning space <span>/</span> <strong>{activeTab}</strong></div>
-          <div className="top-actions"><label className="search-box"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search courses..." /></label><button className="icon-button notification" aria-label="Notifications"><Bell size={18} /><i /></button><div className="top-avatar">AS</div></div>
-        </header>
-
-        <div className="content">
-          <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-dot" /> YOUR NEXT CHAPTER STARTS HERE</div><h1>Good afternoon, Alex <span>✦</span></h1><p>Ready to learn something new today?</p></div><div className="date-chip"><span className="date-spark">✳</span><div><strong>Keep showing up.</strong><small>Your future self will thank you.</small></div></div></section>
-
-          <section className="stats-grid">
-            <div className="stat-card"><div className="stat-icon purple"><BookOpen size={18} /></div><div><span>Courses in progress</span><strong>02</strong><small><b>+1</b> this month</small></div></div>
-            <div className="stat-card"><div className="stat-icon amber"><Flame size={18} /></div><div><span>Learning streak</span><strong>05 days</strong><small>You're on fire!</small></div></div>
-            <div className="stat-card"><div className="stat-icon mint"><Clock3 size={18} /></div><div><span>Hours learned</span><strong>12.5h</strong><small><b>+3.5h</b> this week</small></div></div>
-            <div className="stat-card"><div className="stat-icon blue"><Target size={18} /></div><div><span>Weekly goal</span><strong>70%</strong><div className="mini-progress"><i /></div></div></div>
-          </section>
-
-          <section className="continue-section"><div className="section-heading"><div><div className="eyebrow">PICK UP WHERE YOU LEFT OFF</div><h2>Continue learning</h2></div><button className="text-link" onClick={() => setActiveTab("My learning")}>My learning <ChevronRight size={15} /></button></div>
-            <div className="continue-card"><div className="continue-art"><div className="art-orbit orbit-one" /><div className="art-orbit orbit-two" /><div className="art-code">&lt;/&gt;</div><span className="art-label">REACT.JS</span></div><div className="continue-info"><div className="course-kicker">DEVELOPMENT <span>•</span> BEGINNER</div><h3>The Complete React Guide</h3><p>Build modern interfaces with components, hooks, and real-world projects.</p><div className="continue-meta"><span><BookOpen size={14} /> 16 of 24 lessons</span><span><Clock3 size={14} /> 2h 10m left</span></div><div className="progress-line"><i style={{ width: "68%" }} /></div><div className="continue-bottom"><span><b>68%</b> completed</span><button className="primary-button" onClick={() => setNotice("Lesson player will be added in the next build step.")}><Play size={14} fill="currentColor" /> Continue course</button></div></div></div>
-          </section>
-
-          <section className="catalog-section"><div className="section-heading"><div><div className="eyebrow">EXPLORE. LEARN. GROW.</div><h2>{activeTab === "My learning" ? "Your courses" : "Explore courses"} <span className="heading-count">{visibleCourses.length}</span></h2></div><button className="view-all" onClick={() => { setCategory("All courses"); setActiveTab("Discover"); }}>View all courses <ChevronRight size={15} /></button></div>
-            <div className="category-tabs">{categories.map((item) => <button key={item} className={category === item ? "selected" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
-            {visibleCourses.length ? <div className="course-grid">{visibleCourses.map((course) => {
-              const isJoined = course.enrolled || joined.includes(course.id);
-              return <article className="course-card" key={course.id}><div className={`course-art ${course.color}`}><span className="art-category">{course.category}</span><div className="course-art-symbol">{course.category === "Development" ? "</>" : course.category === "Design" ? "✳" : "↗"}</div><span className="level-pill">{course.level}</span></div><div className="course-card-body"><div className="course-card-title"><h3>{course.title}</h3><span className="rating"><Star size={13} fill="currentColor" /> {course.rating}</span></div><div className="instructor"><span className="instructor-avatar">{course.initials}</span><span>{course.instructor}</span></div><div className="course-details"><span><BookOpen size={13} /> {course.lessons} lessons</span><span><Clock3 size={13} /> {course.hours}</span></div>{isJoined ? <button className="enrolled-button" onClick={() => setActiveTab("My learning")}><CheckCircle2 size={15} /> Enrolled <ChevronRight size={14} /></button> : <button className="outline-button" onClick={() => joinCourse(course.id)}><Plus size={15} /> Enrol now</button>}</div></article>;
-            })}</div> : <div className="empty-state"><BookOpen size={25} /><strong>No courses found</strong><span>Try another search or category.</span></div>}
-          </section>
-          <footer>© 2026 Learn Hunt <span>Made for curious minds <span className="footer-heart">♥</span></span></footer>
-        </div>
-      </main>
-      {notice && <div className="toast"><CheckCircle2 size={17} />{notice}<button onClick={() => setNotice("")}><X size={14} /></button></div>}
-    </div>
-  );
+function Login({onLogin}){
+ const [role,setRole]=useState('student'),[email,setEmail]=useState(accounts.student.email),[password,setPassword]=useState(accounts.student.password),[error,setError]=useState('');
+ const choose=r=>{setRole(r);setEmail(accounts[r].email);setPassword(accounts[r].password);setError('')};
+ const submit=e=>{e.preventDefault();if(email.trim().toLowerCase()!==accounts[role].email||password!==accounts[role].password){setError('Demo credentials do not match this portal.');return}onLogin(role)};
+ return <div className="login"><section className="login-intro"><Brand/><div className="intro-copy"><small>YOUR LEARNING, IN ONE PLACE</small><h1>Make progress<br/>that <em>matters.</em></h1><p>A shared learning space for curious students, inspiring teachers and the people building better education.</p><ul><li><CheckCircle2/> Learn at your own pace</li><li><CheckCircle2/> See your progress clearly</li><li><CheckCircle2/> Keep every subject organised</li></ul></div><span className="copyright">© 2026 Learn Hunt · Demo environment</span></section><section className="login-panel"><div className="login-card"><small>WELCOME BACK</small><h2>Sign in to Learn Hunt</h2><p>Choose your portal to continue.</p><div className="role-picker">{['student','teacher','developer'].map(r=><button key={r} className={role===r?'chosen':''} onClick={()=>choose(r)} type="button">{r==='student'?<GraduationCap/>:r==='teacher'?<BookOpen/>:<ShieldCheck/>}{roleLabel(r)}</button>)}</div><form onSubmit={submit}><label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="btn primary full">Sign in <ArrowRight size={16}/></button></form><div className="demo-note"><b>Demo access</b><span>Credentials are prefilled. Select another role to preview its portal.</span></div><small className="fine-print">Fictional demo accounts only. No real authentication is used.</small></div></section></div>
 }
+function Brand(){return <div className="brand"><span><GraduationCap size={21}/></span>learn<b>hunt</b><i>.</i></div>}
+function Bar({value}){return <div className="bar"><i style={{width:value+'%'}}/></div>}
+function Stat({icon:Icon,label,value,note}){return <div className="stat"><span><Icon size={19}/></span><div><small>{label}</small><b>{value}</b><em>{note}</em></div></div>}
+function Heading({tag,title,subtitle}){return <div className="heading"><small>{tag}</small><h1>{title}</h1><p>{subtitle}</p></div>}
+function ActivityFeed({items}){return <div className="activity-feed">{items.map(a=><div className="activity-row" key={a.id}><span className={'activity-icon '+a.type}>{a.type==='video'?<Video/>:a.type==='quiz'?<ListChecks/>:a.type==='assignment'?<FileText/>:<ClipboardCheck/>}</span><div><b>{a.title}</b><small>{a.subject} · {a.detail}</small></div>{a.score!=null&&<strong>{a.score}%</strong>}<time>{a.date}</time></div>)}</div>}
+function SubjectCard({subject,chosen,onToggle}){return <article className="subject-card"><div className={'subject-art '+subject.color}><span><IconFor name={subject.icon} size={26}/></span><small>{subject.category}</small></div><div className="subject-content"><div className="subject-title"><h3>{subject.name}</h3>{chosen&&<CheckCircle2 size={18} className="chosen-check"/>}</div><p>{subject.description}</p><div className="subject-meta"><span><BookOpen size={14}/>{subject.lessons} lessons</span><span><Users size={14}/>{subject.learners} learners</span></div><div className="teacher-name">Teacher <b>{subject.teacher}</b></div><button className={'btn full '+(chosen?'soft-success':'primary')} onClick={onToggle}>{chosen?<><Check size={15}/> Added to my subjects</>:<><Plus size={15}/> Choose subject</>}</button></div></article>}
+function CourseRow({course,subject}){return <div className="course-row"><span className={'course-symbol '+subject.color}><IconFor name={subject.icon}/></span><div className="course-details"><b>{course.title}</b><small>{subject.name} · {course.teacher}</small><Bar value={course.progress}/></div><strong>{course.progress}%</strong></div>}
+function Table({students}){return <div className="table-scroll"><table><thead><tr><th>Student</th><th>Subjects</th><th>Progress</th><th>Quiz avg.</th><th>Assignments</th></tr></thead><tbody>{students.map(s=><tr key={s.email}><td><b>{s.name}</b><small>{s.email}</small></td><td>{s.subjects}</td><td><div className="table-progress"><Bar value={s.progress}/>{s.progress}%</div></td><td>{s.quiz}%</td><td>{s.assignments}</td></tr>)}</tbody></table></div>}
 
+function Student({page,setPage,subjects,selected,setSelected,activities,setActivities,completed,setCompleted}){
+ const [search,setSearch]=useState(''),[category,setCategory]=useState('All'),[message,setMessage]=useState('');
+ const mySubjects=subjects.filter(s=>selected.includes(s.id));
+ const available=subjects.filter(s=>s.published&&(category==='All'||s.category===category)&&s.name.toLowerCase().includes(search.toLowerCase()));
+ const addActivity=(type,title,subject,detail,score)=>{setActivities([{id:Date.now(),type,title,subject,detail,score,date:'Just now'},...activities]);setMessage(title+' recorded in your activity.');};
+ if(page==='discover')return <><Heading tag="FIND YOUR NEXT SUBJECT" title="Explore subjects" subtitle="Choose the subjects you want to learn. You can update your selection anytime."/><div className="toolbar"><div className="search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search subjects..."/></div><select value={category} onChange={e=>setCategory(e.target.value)}><option>All</option><option>Science</option><option>Technology</option><option>Languages</option></select><small>{available.length} subjects available</small></div><div className="subject-grid">{available.map(s=><SubjectCard key={s.id} subject={s} chosen={selected.includes(s.id)} onToggle={()=>setSelected(selected.includes(s.id)?selected.filter(x=>x!==s.id):[...selected,s.id])}/>)}</div></>;
+ if(page==='subjects')return <><Heading tag="YOUR LEARNING SPACE" title="My subjects" subtitle="Your selected subjects and the courses available inside them."/><div className="subject-grid">{mySubjects.map(s=><SubjectCard key={s.id} subject={s} chosen onToggle={()=>setSelected(selected.filter(x=>x!==s.id))}/>)}</div>{!mySubjects.length&&<Empty title="No subjects selected" text="Explore the catalogue and choose what you would like to study." action={()=>setPage('discover')}/>}<div className="section-head"><h2>Continue learning</h2></div><div className="panel">{sampleCourses.filter(c=>selected.includes(c.subject)).map(c=><CourseRow key={c.id} course={c} subject={subjects.find(s=>s.id===c.subject)}/>)}</div></>;
+ if(page==='progress')return <><Heading tag="YOUR LEARNING INSIGHTS" title="My progress" subtitle="See your video, quiz, assignment and test activity separately."/><div className="stats-grid"><Stat icon={Video} label="Videos completed" value={completed.length+'/6'} note="Sample lesson activity"/><Stat icon={ChartNoAxesCombined} label="Overall progress" value={Math.round(completed.length/6*100)+'%'} note="Based on completed videos"/><Stat icon={ListChecks} label="Quiz average" value="85%" note="Sample graded attempts"/><Stat icon={FileText} label="Assignments" value="7/10" note="3 need attention"/></div><section className="panel"><h2>Recent learning activity</h2><ActivityFeed items={activities}/></section></>;
+ return <><Heading tag="STUDENT OVERVIEW" title="Good morning, Arjun" subtitle="Keep your curiosity moving. Every completed lesson is progress."/><div className="stats-grid"><Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Your learning interests"/><Stat icon={Video} label="Videos completed" value={completed.length+'/6'} note="Keep your streak going"/><Stat icon={ListChecks} label="Quiz average" value="85%" note="Above your 75% target"/><Stat icon={ClipboardCheck} label="Assignments" value="7/10" note="3 submissions remaining"/></div><div className="two-col"><section className="panel"><div className="panel-head"><div><small>YOUR CLASSROOM</small><h2>Continue learning</h2></div><button className="link-btn" onClick={()=>setPage('subjects')}>All subjects <ArrowRight size={14}/></button></div>{sampleCourses.filter(c=>selected.includes(c.subject)).map(c=><CourseRow key={c.id} course={c} subject={subjects.find(s=>s.id===c.subject)}/>)}</section><section className="panel"><small>THIS WEEK</small><h2>Learning snapshot</h2><div className="big-number">{Math.round(completed.length/6*100)}%<small>overall demo progress</small></div><Bar value={completed.length/6*100}/><div className="metric"><span>Quiz average</span><b>85%</b></div><div className="metric"><span>Assignments submitted</span><b>7 of 10</b></div><button className="btn secondary full" onClick={()=>setPage('progress')}>View detailed progress <ArrowRight size={14}/></button></section></div><section className="panel"><div className="panel-head"><h2>Try the demo activities</h2><small>Actions update your sample activity feed.</small></div><div className="actions"><button className="btn secondary" onClick={()=>{if(completed.length<6){setCompleted([...completed,'v'+Date.now()]);addActivity('video','Introduction to the topic','Mathematics','Watched and completed',null)}}}><Video size={15}/> Complete a video</button><button className="btn secondary" onClick={()=>addActivity('quiz','Practice quiz','Mathematics','9 of 10 correct',90)}><ListChecks size={15}/> Attempt a quiz</button><button className="btn secondary" onClick={()=>addActivity('assignment','Profile card assignment','Web Development','Submitted · awaiting review',null)}><FileText size={15}/> Submit assignment</button><button className="btn secondary" onClick={()=>addActivity('test','Chapter test','Physics','Completed · 8 of 10',80)}><ClipboardCheck size={15}/> Take a test</button></div>{message&&<p className="notice">{message}</p>}<ActivityFeed items={activities.slice(0,3)}/></section></>;
+}
+function Empty({title,text,action}){return <div className="empty"><BookOpen/><h3>{title}</h3><p>{text}</p><button className="btn primary" onClick={action}>Explore subjects</button></div>}
+
+function Teacher({page,setPage,subjects,students}){
+ const [type,setType]=useState('Quiz'),[title,setTitle]=useState(''),[subject,setSubject]=useState('physics'),[notice,setNotice]=useState('');
+ const mine=subjects.filter(s=>s.teacher==='Priya Sharma'||s.teacher==='Aman Gupta');
+ if(page==='students')return <><Heading tag="LEARNER SUPPORT" title="Your students" subtitle="Review learner engagement and identify who may need extra support."/><section className="panel"><h2>Student overview</h2><Table students={students}/></section></>;
+ if(page==='assessments')return <><Heading tag="CHECK UNDERSTANDING" title="Assessments" subtitle="Create practice activities and review student submissions."/><div className="two-col"><section className="panel"><h2>Create an assessment</h2><div className="type-picker">{['Quiz','Assignment','Test'].map(t=><button className={type===t?'active':''} onClick={()=>setType(t)} key={t}>{t}</button>)}</div><label className="field">Assessment title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Chapter 1 checkpoint"/></label><label className="field">Subject<select value={subject} onChange={e=>setSubject(e.target.value)}>{mine.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select></label><button className="btn primary" onClick={()=>{if(!title.trim()){setNotice('Enter a title first.');return}setNotice(type+' “'+title+'” added to the demo workspace.');setTitle('')}}><Plus size={15}/> Create {type.toLowerCase()}</button>{notice&&<p className="notice">{notice}</p>}</section><section className="panel"><h2>Recent submissions</h2><ActivityFeed items={[{id:11,type:'assignment',subject:'Physics',title:'Motion worksheet',detail:'Submitted by Arjun',date:'Today'},{id:12,type:'quiz',subject:'Mathematics',title:'Algebra checkpoint',detail:'12 students completed',score:82,date:'Yesterday'},{id:13,type:'test',subject:'Physics',title:'Forces unit test',detail:'8 submissions to review',date:'Monday'}]}/></section></div></>;
+ if(page==='subjects')return <><Heading tag="YOUR CLASSROOM" title="My subjects" subtitle="Manage the subjects and learning content you teach."/><div className="subject-grid">{mine.map(s=><SubjectCard key={s.id} subject={s} chosen onToggle={()=>setNotice('Subject editing will be added in the next iteration.')}/>)}</div>{notice&&<p className="notice">{notice}</p>}</>;
+ return <><Heading tag="TEACHER WORKSPACE" title="Good morning, Priya" subtitle="Plan lessons, support learners and see how your classes are progressing."/><div className="stats-grid"><Stat icon={BookOpen} label="Subjects teaching" value={mine.length} note="Your classroom"/><Stat icon={Users} label="Active students" value="94" note="Across demo subjects"/><Stat icon={ClipboardCheck} label="To review" value="8" note="Assignments and tests"/><Stat icon={ChartNoAxesCombined} label="Class average" value="81%" note="Quiz and test scores"/></div><div className="two-col"><section className="panel"><div className="panel-head"><h2>Teaching subjects</h2><button className="link-btn" onClick={()=>setPage('subjects')}>View all <ArrowRight size={14}/></button></div>{mine.map(s=><div className="teacher-row" key={s.id}><span className={'course-symbol '+s.color}><IconFor name={s.icon}/></span><div><b>{s.name}</b><small>{s.lessons} lessons · {s.learners} learners</small></div><span className="published">Published</span></div>)}</section><section className="panel"><small>QUICK ACTION</small><h2>Build an activity</h2><p className="muted">Create a quiz, assignment or test for one of your subjects.</p><button className="btn primary full" onClick={()=>setPage('assessments')}>Create assessment <ArrowRight size={14}/></button><button className="btn secondary full" onClick={()=>setPage('students')}>Review students <Users size={14}/></button></section></div><section className="panel"><div className="panel-head"><h2>Student progress</h2><button className="link-btn" onClick={()=>setPage('students')}>Open student list <ArrowRight size={14}/></button></div><Table students={students.slice(0,3)}/></section></>;
+}
+function Developer({page,subjects,setSubjects,students}){
+ const [name,setName]=useState(''),[category,setCategory]=useState('Technology'),[notice,setNotice]=useState('');
+ if(page==='users')return <><Heading tag="PLATFORM ACCESS" title="User management" subtitle="Review demo accounts and role access across Learn Hunt."/><section className="panel"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody>{[{name:'Aarav Developer',email:accounts.developer.email,role:'Developer'},{name:'Priya Sharma',email:accounts.teacher.email,role:'Teacher'},...students.map(s=>({...s,role:'Student'}))].map(u=><tr key={u.email}><td>{u.name}</td><td>{u.email}</td><td>{u.role}</td><td><span className="published">Active</span></td></tr>)}</tbody></table></section></>;
+ if(page==='reports')return <><Heading tag="PLATFORM HEALTH" title="Platform reports" subtitle="High-level usage signals from the sample dataset."/><div className="stats-grid"><Stat icon={Users} label="Registered users" value="128" note="Demo platform total"/><Stat icon={BookOpen} label="Published subjects" value={subjects.length} note="Catalogue total"/><Stat icon={Activity} label="Learning activities" value="486" note="Sample activity records"/><Stat icon={ChartNoAxesCombined} label="Average completion" value="71%" note="Active learners"/></div><section className="panel"><h2>Platform activity</h2>{[['Video lessons',78],['Quizzes',64],['Assignments',52],['Tests',41]].map(([label,v])=><div className="report-row" key={label}><span>{label}</span><Bar value={v}/><b>{v}%</b></div>)}</section></>;
+ return <><Heading tag="DEVELOPER CONSOLE" title="Platform overview" subtitle="Manage the learning catalogue, role access and platform health."/><div className="stats-grid"><Stat icon={Users} label="Total users" value="128" note="Students and teachers"/><Stat icon={BookOpen} label="Subjects" value={subjects.length} note="In the catalogue"/><Stat icon={ShieldCheck} label="Platform roles" value="3" note="Developer · Teacher · Student"/><Stat icon={Activity} label="Learning activity" value="486" note="Sample events"/></div><div className="two-col"><section className="panel"><div className="panel-head"><h2>Subject catalogue</h2><span className="published">{subjects.length} subjects</span></div>{subjects.map(s=><div className="teacher-row" key={s.id}><span className={'course-symbol '+s.color}><IconFor name={s.icon}/></span><div><b>{s.name}</b><small>{s.category} · {s.teacher}</small></div><span className={s.published?'published':'draft'}>{s.published?'Published':'Draft'}</span></div>)}</section><section className="panel"><small>QUICK ACTION</small><h2>Add a subject</h2><label className="field">Subject name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Biology"/></label><label className="field">Category<select value={category} onChange={e=>setCategory(e.target.value)}><option>Technology</option><option>Science</option><option>Languages</option><option>Business</option></select></label><button className="btn primary full" onClick={()=>{if(!name.trim()){setNotice('Enter a subject name first.');return}setSubjects([...subjects,{id:'new'+Date.now(),name:name.trim(),category,teacher:'Unassigned',lessons:0,learners:0,description:'New subject in the demo catalogue.',icon:'code',color:'cyan',published:false}]);setNotice(name+' added as a draft subject.');setName('')}}><Plus size={15}/> Add draft subject</button>{notice&&<p className="notice">{notice}</p>}<p className="muted">New subjects remain drafts until a teacher is assigned and content is ready.</p></section></div><section className="panel"><h2>Role permissions</h2><div className="permissions"><div><ShieldCheck/><b>Developer</b><small>Manage users, subjects and reports.</small></div><div><BookOpen/><b>Teacher</b><small>Manage assigned subjects and assessments.</small></div><div><GraduationCap/><b>Student</b><small>Choose subjects, learn and view progress.</small></div></div></section></>;
+}
+function App(){
+ const [role,setRole]=useState(null),[page,setPage]=useState('overview'),[mobile,setMobile]=useState(false),[subjects,setSubjects]=useState(seedSubjects),[selected,setSelected]=useState(['math','physics','web']),[activities,setActivities]=useState(initialActivities),[completed,setCompleted]=useState(['v1','v2','v3','v4']);
+ if(!role)return <Login onLogin={r=>{setRole(r);setPage('overview')}}/>;
+ const user=accounts[role],nav=role==='student'?[['overview','Overview',LayoutDashboard],['subjects','My subjects',BookOpen],['discover','Explore subjects',Search],['progress','My progress',ChartNoAxesCombined]]:role==='teacher'?[['overview','Overview',LayoutDashboard],['subjects','My subjects',BookOpen],['assessments','Assessments',ClipboardCheck],['students','Students',Users]]:[['overview','Overview',LayoutDashboard],['subjects','Subject catalogue',BookOpen],['users','User management',Users],['reports','Platform reports',ChartNoAxesCombined]];
+ const title=({overview:'Overview',subjects:role==='developer'?'Subject catalogue':'My subjects',discover:'Explore subjects',progress:'My progress',assessments:'Assessments',students:'Students',users:'User management',reports:'Platform reports'})[page];
+ const logout=()=>{setRole(null);setPage('overview')};
+ return <div className="app-shell"><aside className={'sidebar '+(mobile?'open':'')}><Brand/><small className="side-caption">{role.toUpperCase()} PORTAL</small><nav>{nav.map(([id,label,Icon])=><button key={id} className={page===id?'active':''} onClick={()=>{setPage(id);setMobile(false)}}><Icon size={18}/>{label}</button>)}</nav><div className="sidebar-bottom"><div className="help-box"><b>Need a hand?</b><small>Explore the demo workspace</small></div><div className="user-box"><span className={'avatar '+role}>{user.initials}</span><div><b>{user.name}</b><small>{roleLabel(role)} account</small></div><button onClick={logout} title="Sign out"><LogOut size={16}/></button></div></div></aside>{mobile&&<button className="backdrop" onClick={()=>setMobile(false)} aria-label="Close menu"/>}<main className="main"><header className="topbar"><button className="menu" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Learn Hunt <span>/</span> <b>{title}</b></div><div className="top-actions"><span>{role} portal</span><button aria-label="Notifications"><Bell size={18}/></button><span className={'avatar '+role}>{user.initials}</span></div></header><div className="content">{role==='student'?<Student page={page} setPage={setPage} subjects={subjects} selected={selected} setSelected={setSelected} activities={activities} setActivities={setActivities} completed={completed} setCompleted={setCompleted}/>:role==='teacher'?<Teacher page={page} setPage={setPage} subjects={subjects} students={demoStudents}/>:<Developer page={page} subjects={subjects} setSubjects={setSubjects} students={demoStudents}/>}<footer>© 2026 Learn Hunt <span>Demo environment · Sample data only</span></footer></div></main></div>
+}
 export default App;
