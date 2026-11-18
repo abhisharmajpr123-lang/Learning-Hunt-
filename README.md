@@ -1,30 +1,29 @@
 # Learn Hunt
 
-Learn Hunt is a dark-themed learning management system (LMS) built to help students discover courses, enrol, study lessons, and track their progress.
+Learn Hunt is a Learning Management System (LMS) prototype for ALTA BUILDER 30 Track A. Students choose subjects, study lessons and track progress. Teachers manage learning content and assessments; developers manage platform access and the subject catalogue.
 
-## Current status
+## Day 2 — Design + interactive demo
 
-**Track A — Day 1 foundation**
+- [x] MongoDB collections and relationships: [database schema](./docs/database-schema.md)
+- [x] Four key wireframes: [wireframes](./docs/wireframes.md)
+- [x] Three role-specific portals: developer, teacher and student
+- [x] Light minimal responsive UI
+- [x] Demo subject discovery and selection
+- [x] Sample video, quiz, assignment and test activity tracking
+- [x] Teacher assessment workspace and learner progress view
+- [x] Developer subject catalogue, user management and reports
 
-The current frontend is an interactive React + Vite prototype. It includes:
-- Responsive dark learner dashboard
-- Course discovery cards and category filters
-- Course search
-- Enrolment interaction and a My Learning view
-- Continue-learning panel with progress presentation
-- Mobile navigation
+The current frontend uses fictional local data and simulated sign-in. No real authentication, database, file upload or persistent storage is connected yet.
 
-The course catalogue and learner metrics are currently sample data held in the frontend. Authentication, persistent storage, instructor tools, lesson playback, quizzes, grading, and certificates are planned next; they are not implemented yet.
+## Demo accounts
 
-## Tech stack
+| Portal | Email | Password |
+|---|---|---|
+| Developer | `dev@learnhunt.demo` | `Dev@123` |
+| Teacher | `teacher@learnhunt.demo` | `Teach@123` |
+| Student | `student@learnhunt.demo` | `Study@123` |
 
-- React 18
-- Vite 6
-- JavaScript
-- CSS
-- lucide-react icons
-
-Planned backend: Node.js, Express, MongoDB, and JWT authentication.
+These credentials are for this demo only. Never use them for a real account.
 
 ## Run locally
 
@@ -35,43 +34,36 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite (normally http://localhost:5173).
-
-To create a production build:
+To verify a production bundle:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Main project structure
+## Stack
 
-```text
-Learning-Hunt-/
-├── index.html
-├── package.json
-├── src/
-│   ├── App.jsx
-│   ├── index.css
-│   └── main.jsx
-└── README.md
-```
+- React 18 + Vite 6
+- JavaScript, CSS and lucide-react
+- Planned backend: Node.js + Express
+- Planned database: MongoDB + Mongoose
+- Planned authentication: password hashing, JWT/session cookies and server-enforced role permissions
 
-## Product roles
+## Role responsibilities
 
-- **Learner:** browse courses, enrol, complete lessons, take quizzes, and view progress.
-- **Instructor:** create and manage courses, sections, lessons, quizzes, and learner progress.
+- **Developer:** user access, subject catalogue, teacher assignment and platform reports.
+- **Teacher:** assigned subjects, courses, lessons, quizzes, assignments, tests and learner progress.
+- **Student:** choose subjects, browse courses, watch lessons, complete assessments and track personal progress.
 
-## Roadmap
+The separate login portals are a demo convenience. In production, the server determines the authenticated user's role; public users must never be able to grant themselves developer access.
 
-1. Project foundation and responsive learner dashboard
-2. Authentication and role-based access
-3. Course and lesson management
-4. Enrolment and progress tracking
-5. Quiz module, automatic grading, and downloadable completion certificate
+## Next steps
 
-See [FEATURES.md](./FEATURES.md) for the feature checklist.
+1. Day 3: Express backend, environment configuration, MongoDB connection and `/health` endpoint.
+2. Day 4: user model, validation and secure password hashing.
+3. Day 5: login, JWT/session handling and protected role-based routes.
+4. Connect subject, course, lesson and assessment APIs to the frontend.
 
-## Important
+## What I built and what I understood
 
-This is a learning project prototype. Do not enter real passwords or personal information. Backend security and production deployment will be added in later stages.
+I separated a student's subject selection from course enrolment. Learning evidence is stored as individual lesson progress and assessment submissions so video completion, quiz scores, assignment reviews and test results can be reported separately. The current React demo simulates these flows with local state; MongoDB and real authentication are later milestones.
