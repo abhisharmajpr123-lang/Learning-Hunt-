@@ -2,43 +2,48 @@
 
 ## Track A: Learning Management System
 
-### Day 1 foundation — current prototype
-- [x] React + Vite application scaffold
-- [x] Dark, responsive learner dashboard
-- [x] Browse sample courses
-- [x] Search and filter by category
-- [x] Demo course enrolment interaction
-- [x] My Learning navigation view
-- [ ] Persist enrolments in a database
+### Day 1 — Plan
+- [x] Problem statement, product scope and MVP feature list
+- [x] GitHub repository and project foundation
 
-### Core LMS features
-- [ ] Student registration and login
-- [ ] Instructor registration and login
-- [ ] JWT-based authentication and protected routes
-- [ ] Role-based permissions (student / instructor / admin)
-- [ ] Instructor course creation, editing, publishing, and deletion
-- [ ] Course sections and lessons (video, text, and resources)
-- [ ] Course catalogue with search and filters
-- [ ] Student course enrolment
-- [ ] Lesson completion tracking
-- [ ] Course progress dashboard
+### Day 2 — Database schema and wireframes
+- [x] MongoDB collections and relationships in `docs/database-schema.md`
+- [x] Four key wireframes in `docs/wireframes.md`
+- [x] Three role-specific portals: developer, teacher and student
+- [x] Light minimal responsive design
+- [x] Demo subject discovery and selection
+- [x] Demo activity/progress views for videos, quizzes, assignments and tests
+- [x] Teacher assessment workspace and student progress table
+- [x] Developer catalogue, user and report views
 
-### Heavy feature: quizzes and certificates
-- [ ] Instructor quiz builder
-- [ ] Multiple-choice questions and answer options
-- [ ] Automatic quiz grading
-- [ ] Score and pass/fail summary
-- [ ] Certificate eligibility after course completion
-- [ ] Downloadable PDF certificate
+### Core product features
+- [x] Simulated demo login (not production authentication)
+- [x] Student subject selection and discovery
+- [x] Sample learning activity feed and progress breakdown
+- [x] Teacher assessment workspace and learner progress view (demo)
+- [x] Developer subject catalogue and user/report views (demo)
+- [ ] Real registration and secure authentication
+- [ ] Server-side role-based authorization
+- [ ] MongoDB persistence for users, subjects and selections
+- [ ] Teacher course/lesson authoring and media storage
+- [ ] Student enrolment and lesson playback tracking
+- [ ] Quiz grading, assignment review and test workflows
+- [ ] Server-calculated progress and analytics
+- [ ] PDF certificate generation
+
+## Heavy feature (Days 11–12)
+- [ ] Quiz module with automatic grading
+- [ ] Downloadable PDF certificate after required lessons and final quiz are completed
 
 ## Quality goals
-- Responsive on mobile, tablet, and desktop
+- Responsive on mobile, tablet and desktop
 - Accessible labels and keyboard-friendly controls
-- Clear loading, empty, and error states
-- Validate user input on both client and server
+- Validate input on client and server
 - Keep secrets in environment variables; never commit `.env`
-- Add tests for authentication, enrolment, progress, and grading
+- Store password hashes only, never plaintext passwords
+- Enforce role and ownership checks on every protected API
+- Calculate scores and progress on the server
+- Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-
-Items marked complete above are present in the frontend prototype only. Sample courses and progress are hard-coded. They are not backed by accounts or a database yet.
+The frontend is a demo built with fictional sample data and React state. Demo sign-in is not real authentication, and most changes reset on refresh. No backend or database is connected yet.
