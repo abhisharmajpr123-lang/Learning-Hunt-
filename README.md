@@ -59,11 +59,21 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Day 3: Express backend, environment configuration, MongoDB connection and `/health` endpoint.
-2. Day 4: user model, validation and secure password hashing.
-3. Day 5: login, JWT/session handling and protected role-based routes.
-4. Connect subject, course, lesson and assessment APIs to the frontend.
+1. Day 5: Login endpoint, secure session/JWT handling and server-enforced role access.
+2. Connect subject, course, lesson and assessment APIs to the frontend.
+3. Replace sample student scores/activity with database-backed events.
 
 ## What I built and what I understood
 
 I separated a student's subject selection from course enrolment. Learning evidence is stored as individual lesson progress and assessment submissions so video completion, quiz scores, assignment reviews and test results can be reported separately. The current React demo simulates these flows with local state; MongoDB and real authentication are later milestones.
+
+## Day 4 — Authentication + learning intelligence
+- [x] User model with student/teacher/developer roles (student is the safe signup default)
+- [x] Signup API with input validation and duplicate-email handling
+- [x] bcrypt password hashing (12 rounds), password excluded from default query selection
+- [x] Health endpoint and Postman smoke-test plan
+- [x] Student demo: XP, levels, daily missions, streak and badges
+- [x] Score-based topic insights and local progress persistence
+- See [Day 4 API and test notes](./README-DAY4.md).
+
+The authentication API is implemented but needs a local MongoDB connection for endpoint smoke tests. Frontend gamification uses localStorage demo data and is not server verified.
