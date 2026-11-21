@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, Atom, Award, Bell, BookOpen, Brain, Calculator, ChartNoAxesCombined, Check, CheckCircle2, ClipboardCheck, Code2, FileText, Flame, FlaskConical, GraduationCap, LayoutDashboard, ListChecks, LogOut, Menu, Plus, Search, ShieldCheck, Sparkles, Target, Users, Video, X, Zap } from 'lucide-react';
 
 const accounts={
