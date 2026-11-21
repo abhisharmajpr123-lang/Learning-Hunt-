@@ -10,6 +10,9 @@
 - Wrong email and wrong password return the same `401 Invalid email or password.` so the endpoint
   does not reveal which accounts exist.
 - The API refuses to start if `JWT_SECRET` is missing or shorter than 32 characters.
+- Auth responses send `Cache-Control: no-store` (plus `Pragma: no-cache`) so tokens are never cached.
+- Helmet sets security headers (`X-Content-Type-Options`, CSP, no `X-Powered-By`).
+- `POST /api/auth/login` is rate limited to 10 attempts per 15 minutes per IP; the 11th returns `429`.
 
 ### Endpoints
 
@@ -17,7 +20,7 @@
 | --- | --- | --- | --- |
 | GET | `/health` | none | `200 { success: true }` |
 | POST | `/api/auth/signup` | none | `201` user, `400` validation, `409` duplicate |
-| POST | `/api/auth/login` | none | `200 { token, tokenType, expiresIn, user }`, `400` validation, `401` bad credentials |
+| POST | `/api/auth/login` | none | `200 { token, tokenType, expiresIn, user }`, `400` validation, `401` bad credentials, `429` rate limited |
 | GET | `/api/auth/me` | Bearer | `200 { user }`, `401` missing/expired/unknown token |
 
 ### Login response
@@ -38,7 +41,7 @@
    (for example `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 2. `npm install`
 3. Start MongoDB locally, then `npm run server`.
-4. `npm test` runs the Day 5 auth tests (no database needed).
+4. `npm test` runs the auth tests; the integration test starts its own in-memory MongoDB, so no local database is needed.
 5. Frontend demo: `npm run dev`.
 
 ## Postman smoke tests
@@ -49,8 +52,13 @@
 - `GET /api/auth/me` with a tampered token → `401`.
 
 ## Tests
-`npm test` → 13 passing (5 signup validation + 8 login/JWT/middleware), including
+`npm test` → 16 passing (5 signup validation + 8 login/JWT/middleware + 3 integration), including
 "protected route returns 401 without a token" and "protected route returns data with a valid token".
+
+The integration test (`server/tests/auth.integration.test.js`) boots a real Express app against an
+in-memory MongoDB and walks the whole flow: signup → bcrypt hash in the database → duplicate signup
+`409` → wrong password `401` → login → `/me` with the token → `/me` without a token `401` → tampered
+token `401` → rate limiting `429` → `no-store` and helmet headers.
 
 ## LinkedIn — Day 5 progress post
 Post on Day 5 with `#ALTABuilder30`, tag `@ALTA School of Technology`.
@@ -64,13 +72,16 @@ Post on Day 5 with `#ALTABuilder30`, tag `@ALTA School of Technology`.
 > → the token is verified on every request, then the user is reloaded from the database so a deleted account is locked out immediately
 > → no `JWT_SECRET` under 32 characters = the server refuses to boot
 >
-> 13 tests green, including "401 without a token, data with one". Frontend screens for this land on Day 8.
+> Hardened it too: rate-limited login, helmet headers, and no-store caching on auth responses.
+>
+> 16 tests green, including a real end-to-end signup → login → protected route run against an in-memory MongoDB. Frontend screens for this land on Day 8.
 >
 > DSA streak still alive 🧩 @ALTA School of Technology #ALTABuilder30 #WebDevelopment #JWT #MERN
 
 ## What I built and what I understood
 - **Built:** `server/utils/token.js` (sign/verify with expiry), `server/middleware/auth.js`
-  (`requireAuth`), `POST /api/auth/login`, `GET /api/auth/me`, `validateLogin`, and the auth tests.
+  (`requireAuth`), `server/middleware/rateLimit.js`, `POST /api/auth/login`, `GET /api/auth/me`,
+  `validateLogin`, plus unit and integration tests.
 - **Understood:** the JWT carries only `sub` and `role`, so any other profile data must be fetched
   from MongoDB — a token is proof of "who logged in", not a copy of the user record. A stolen token
   stays valid until it expires, which is why the expiry is short and why the middleware re-checks that

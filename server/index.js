@@ -1,11 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import { getJwtSecret } from './utils/token.js';
 
 const app = express();
+app.disable('x-powered-by');
+app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json({ limit: '10kb' }));
 

@@ -1,10 +1,18 @@
 import { Router } from 'express';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loginLimiter } from '../middleware/rateLimit.js';
 import { signToken, getExpiresIn } from '../utils/token.js';
 import { validateLogin, validateSignup } from '../utils/validation.js';
 
 const router = Router();
+
+// Auth responses carry tokens and personal data, so they must never be cached.
+router.use((_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('Pragma', 'no-cache');
+  next();
+});
 
 function publicUser(user) {
   return { id: String(user.id), name: user.name, email: user.email, role: user.role };
@@ -30,7 +38,7 @@ router.post('/signup', async (req, res, next) => {
   }
 });
 
-router.post('/login', async (req, res, next) => {
+router.post('/login', loginLimiter, async (req, res, next) => {
   const { errors, cleanEmail } = validateLogin(req.body);
   if (errors.length) return res.status(400).json({ success: false, message: 'Validation failed', errors });
 

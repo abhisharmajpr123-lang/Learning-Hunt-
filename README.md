@@ -13,7 +13,7 @@ Learn Hunt is a Learning Management System (LMS) prototype for ALTA BUILDER 30 T
 - [x] Teacher assessment workspace and learner progress view
 - [x] Developer subject catalogue, user management and reports
 
-The current frontend uses fictional local data and simulated sign-in. No real authentication, database, file upload or persistent storage is connected yet.
+The frontend still uses fictional local data and simulated sign-in. A real authentication API (signup, login and JWT-protected routes) now lives in `server/`, but the UI is not wired to it yet and learning data is not persisted.
 
 ## Demo accounts
 
@@ -31,8 +31,20 @@ Requirements: Node.js 18+ and npm.
 
 ```bash
 npm install
-npm run dev
+cp .env.example .env   # then set a random 32+ character JWT_SECRET
+npm run dev            # frontend on http://localhost:5173
+npm run server         # API on http://localhost:4000 (needs MongoDB)
 ```
+
+`JWT_SECRET` must be at least 32 characters; the server refuses to start otherwise. Generate one with `openssl rand -hex 32`. `.env` is gitignored — only `.env.example` is committed.
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs the auth unit tests plus an integration test that starts an in-memory MongoDB and exercises signup → login → protected `/me` → tampered/missing token → rate limiting against the real Express app.
 
 To verify a production bundle:
 
@@ -45,9 +57,10 @@ npm run preview
 
 - React 18 + Vite 6
 - JavaScript, CSS and lucide-react
-- Planned backend: Node.js + Express
-- Planned database: MongoDB + Mongoose
-- Planned authentication: password hashing, JWT/session cookies and server-enforced role permissions
+- Backend: Node.js + Express in `server/`
+- Database: MongoDB + Mongoose
+- Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
+- Testing: `node --test` with `mongodb-memory-server`
 
 ## Role responsibilities
 
@@ -59,7 +72,7 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Day 5: Login endpoint, secure session/JWT handling and server-enforced role access.
+1. Wire the signup/login forms to the API and store the token, then add server-enforced role permissions per route.
 2. Connect subject, course, lesson and assessment APIs to the frontend.
 3. Replace sample student scores/activity with database-backed events.
 
@@ -76,4 +89,14 @@ I separated a student's subject selection from course enrolment. Learning eviden
 - [x] Score-based topic insights and local progress persistence
 - See [Day 4 API and test notes](./README-DAY4.md).
 
-The authentication API is implemented but needs a local MongoDB connection for endpoint smoke tests. Frontend gamification uses localStorage demo data and is not server verified.
+The authentication API is implemented and covered by an in-memory MongoDB integration test. Frontend gamification uses localStorage demo data and is not server verified.
+
+## Day 5 — Login API + protected routes
+- [x] `POST /api/auth/login` validates credentials and returns a signed JWT
+- [x] Tokens carry only the user id and role, and expire (`JWT_EXPIRES_IN`, default `1d`)
+- [x] `requireAuth` returns 401 for missing, malformed, expired or tampered tokens, and reloads the user from MongoDB
+- [x] `GET /api/auth/me` returns 401 without a token and user data with one
+- [x] Same `401 Invalid email or password.` for unknown email and wrong password
+- [x] Server fails fast when `JWT_SECRET` is missing or under 32 characters
+- [x] Helmet headers, login rate limiting (10 attempts / 15 minutes) and `Cache-Control: no-store` on auth responses
+- See [Day 5 API and test notes](./README-DAY5.md).
