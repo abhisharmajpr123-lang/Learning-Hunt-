@@ -107,7 +107,16 @@ test('repeated login attempts are rate limited', async () => {
 test('security headers are applied and the JSON body limit is enforced', async () => {
   const health = await call('GET', '/health');
   assert.equal(health.status, 200);
+  assert.equal(health.body.database, 'connected');
   assert.equal(health.headers.get('x-powered-by'), null);
   assert.equal(health.headers.get('x-content-type-options'), 'nosniff');
   assert.ok(health.headers.get('content-security-policy'));
+});
+
+test('unknown routes return a JSON 404 instead of HTML', async () => {
+  const response = await call('GET', '/api/nope');
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.match(response.body.message, /GET \/api\/nope not found/);
+  assert.match(response.headers.get('content-type') || '', /application\/json/);
 });

@@ -46,6 +46,8 @@ npm test
 
 Runs 25 tests: signup/login validation and JWT unit tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting against the real Express app, and a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s) against an in-memory MongoDB.
 
+`npm test` and `npm run build` also run on every push and pull request through GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)).
+
 To verify a production bundle:
 
 ```bash

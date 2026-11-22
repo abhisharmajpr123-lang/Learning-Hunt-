@@ -1,7 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import User from '../models/User.js';
-import { requireAuth, readBearerToken } from '../middleware/auth.js';
+import { requireAuth, requireRole, readBearerToken } from '../middleware/auth.js';
 import { signToken, verifyToken, getJwtSecret } from '../utils/token.js';
 import { validateLogin } from '../utils/validation.js';
 
@@ -99,6 +99,32 @@ test('protected route returns 401 when the token points at a deleted user', asyn
     assert.equal(next.mock.callCount(), 0);
   } finally {
     mock.restoreAll();
+  }
+});
+
+test('requireRole returns 401 when no authenticated user is present', () => {
+  const res = makeRes();
+  const next = mock.fn(() => {});
+  requireRole('teacher', 'developer')({ headers: {} }, res, next);
+  assert.equal(res.statusCode, 401);
+  assert.equal(next.mock.callCount(), 0);
+});
+
+test('requireRole returns 403 for a role outside the allowlist', () => {
+  const res = makeRes();
+  const next = mock.fn(() => {});
+  requireRole('teacher', 'developer')({ user: { id: 'abc', role: 'student' } }, res, next);
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.success, false);
+  assert.match(res.body.message, /not allowed/);
+  assert.equal(next.mock.callCount(), 0);
+});
+
+test('requireRole lets allowed roles through', () => {
+  for (const role of ['teacher', 'developer']) {
+    const next = mock.fn(() => {});
+    requireRole('teacher', 'developer')({ user: { id: 'abc', role } }, makeRes(), next);
+    assert.equal(next.mock.callCount(), 1, `${role} should pass`);
   }
 });
 
