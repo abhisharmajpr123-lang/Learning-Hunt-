@@ -24,6 +24,14 @@
 - [x] Helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
 - [x] Unit tests plus a MongoDB in-memory integration test for the full auth flow
 
+### Day 6 — CRUD APIs for the main entity
+- [x] `Subject` model with a unique `name` + `category` index and a `teacher` owner
+- [x] `POST /api/subjects`, `GET /api/subjects`, `GET /api/subjects/:id`, `PATCH /api/subjects/:id` and `DELETE /api/subjects/:id`, all behind `requireAuth`
+- [x] Ownership: only the owning teacher or a developer can update or delete a subject
+- [x] The `teacher` field comes from the verified token, never from the request body
+- [x] Validation for subject input plus `409` on duplicate names within a category
+- [x] Integration tests covering the CRUD flow, 401s, 403s, 400s, 404s and 409
+
 ### Core product features
 - [x] Simulated demo login (not production authentication)
 - [x] Student subject selection and discovery
@@ -32,7 +40,7 @@
 - [x] Developer subject catalogue and user/report views (demo)
 - [x] Real registration and secure authentication
 - [ ] Server-side role-based authorization
-- [ ] MongoDB persistence for users, subjects and selections
+- [ ] MongoDB persistence for users, subjects and selections (users and subjects are stored now; subject selections are still local)
 - [ ] Teacher course/lesson authoring and media storage
 - [ ] Student enrolment and lesson playback tracking
 - [ ] Quiz grading, assignment review and test workflows
@@ -54,4 +62,4 @@
 - Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-The frontend is still a demo built with fictional sample data and React state, so its sign-in form is simulated and most changes reset on refresh. The backend API in `server/` is real: signup, login and JWT-protected routes run against MongoDB, tested through an in-memory database. Connecting the UI to that API, and enforcing role permissions on individual routes, are the remaining steps.
+The frontend is still a demo built with fictional sample data and React state, so its sign-in form is simulated and most changes reset on refresh. The backend API in `server/` is real: signup, login, JWT-protected routes and subject CRUD run against MongoDB, tested through an in-memory database. Connecting the UI to that API (Day 8–9), adding search and pagination (Day 7), and persisting the demo's subject selections are the remaining steps.

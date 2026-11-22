@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
+import subjectRoutes from './routes/subjects.js';
 import { getJwtSecret } from './utils/token.js';
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json({ limit: '10kb' }));
 
 app.get('/health', (_req, res) => res.status(200).json({ success: true, message: 'Learn Hunt API is healthy' }));
 app.use('/api/auth', authRoutes);
+app.use('/api/subjects', subjectRoutes);
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ success: false, message: 'Internal server error' });

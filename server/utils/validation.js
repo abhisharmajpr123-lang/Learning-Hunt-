@@ -12,6 +12,36 @@ export function validateLogin({ email, password } = {}) {
   return { errors, cleanEmail };
 }
 
+export function validateSubject({ name, category, description, published } = {}, { partial = false } = {}) {
+  const errors = [];
+  const clean = {};
+
+  if (name !== undefined || !partial) {
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+    if (cleanName.length < 2 || cleanName.length > 80) errors.push('Subject name must be 2–80 characters.');
+    clean.name = cleanName;
+  }
+
+  if (category !== undefined || !partial) {
+    const cleanCategory = typeof category === 'string' ? category.trim() : '';
+    if (cleanCategory.length < 2 || cleanCategory.length > 40) errors.push('Category must be 2–40 characters.');
+    clean.category = cleanCategory;
+  }
+
+  if (description !== undefined) {
+    const cleanDescription = typeof description === 'string' ? description.trim() : null;
+    if (cleanDescription === null || cleanDescription.length > 500) errors.push('Description must be 500 characters or fewer.');
+    else clean.description = cleanDescription;
+  }
+
+  if (published !== undefined) {
+    if (typeof published !== 'boolean') errors.push('Published must be true or false.');
+    else clean.published = published;
+  }
+
+  return { errors, clean };
+}
+
 export function validateSignup({ name, email, password } = {}) {
   const errors = [];
   const cleanName = typeof name === 'string' ? name.trim() : '';

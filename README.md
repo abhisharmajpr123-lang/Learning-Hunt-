@@ -44,7 +44,7 @@ npm run server         # API on http://localhost:4000 (needs MongoDB)
 npm test
 ```
 
-Runs the auth unit tests plus an integration test that starts an in-memory MongoDB and exercises signup → login → protected `/me` → tampered/missing token → rate limiting against the real Express app.
+Runs 25 tests: signup/login validation and JWT unit tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting against the real Express app, and a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s) against an in-memory MongoDB.
 
 To verify a production bundle:
 
@@ -60,6 +60,7 @@ npm run preview
 - Backend: Node.js + Express in `server/`
 - Database: MongoDB + Mongoose
 - Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
+- API: subject CRUD at `/api/subjects` (create, list, read, update, delete), all behind `requireAuth`, with owning-teacher-or-developer checks on update and delete
 - Testing: `node --test` with `mongodb-memory-server`
 
 ## Role responsibilities
@@ -72,9 +73,9 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Wire the signup/login forms to the API and store the token, then add server-enforced role permissions per route.
-2. Connect subject, course, lesson and assessment APIs to the frontend.
-3. Replace sample student scores/activity with database-backed events.
+1. Day 7: add the second entity (`Course` under a `Subject`) plus search, filtering and pagination on the list endpoint.
+2. Day 8: wire the signup/login forms to the API, store the token and add a routing layout; Day 9 adds list and detail screens reading live data.
+3. Replace sample student scores/activity with database-backed events, then role-specific dashboards.
 
 ## What I built and what I understood
 
@@ -100,3 +101,11 @@ The authentication API is implemented and covered by an in-memory MongoDB integr
 - [x] Server fails fast when `JWT_SECRET` is missing or under 32 characters
 - [x] Helmet headers, login rate limiting (10 attempts / 15 minutes) and `Cache-Control: no-store` on auth responses
 - See [Day 5 API and test notes](./README-DAY5.md).
+
+## Day 6 — CRUD APIs for the main entity
+- [x] `Subject` model: name, category, description, owning teacher and published flag, with a unique name + category index
+- [x] `POST /api/subjects`, `GET /api/subjects`, `GET /api/subjects/:id`, `PATCH /api/subjects/:id`, `DELETE /api/subjects/:id` — all behind `requireAuth`
+- [x] The owning teacher (from the token) or a developer may update or delete; everyone else gets `403`
+- [x] `400` validation, `409` duplicate name within a category, `404` for unknown or malformed ids
+- [x] 4 new `validateSubject` unit tests and 5 subject integration tests; `npm test` → 25 passing
+- See [Day 6 API and test notes](./README-DAY6.md).
