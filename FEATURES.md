@@ -32,6 +32,18 @@
 - [x] Validation for subject input plus `409` on duplicate names within a category
 - [x] Integration tests covering the CRUD flow, 401s, 403s, 400s, 404s and 409
 
+### Day 7 — Related entities, search and pagination
+- [x] `Course` model related to `Subject`, with embedded ordered sections and lessons
+- [x] Nested course APIs: `POST`/`GET /api/subjects/:subjectId/courses`, all behind `requireAuth`
+- [x] Course preview API returning numbered sections and lessons, plus an `outline` on list items
+- [x] Automatic lesson numbering (`Lesson 1, 2, 3…`) with a course-wide lesson number
+- [x] Empty-state message for a course with no lessons
+- [x] Case-insensitive search (`q`) with escaped regex input
+- [x] Filters for level, subject, category and published state
+- [x] Pagination with `page`/`limit` and `total`, `totalPages`, `hasNextPage`, `hasPreviousPage` metadata
+- [x] Sections and lessons can be added incrementally; deleting a subject removes its courses
+- [x] Integration tests for courses, sections, lessons, ownership, empty states, search and pagination
+
 ### Core product features
 - [x] Simulated demo login (not production authentication)
 - [x] Student subject selection and discovery
@@ -41,7 +53,7 @@
 - [x] Real registration and secure authentication
 - [ ] Server-side role-based authorization
 - [ ] MongoDB persistence for users, subjects and selections (users and subjects are stored now; subject selections are still local)
-- [ ] Teacher course/lesson authoring and media storage
+- [x] Teacher course/lesson authoring through the API (no media upload yet)
 - [ ] Student enrolment and lesson playback tracking
 - [ ] Quiz grading, assignment review and test workflows
 - [ ] Server-calculated progress and analytics
@@ -62,4 +74,4 @@
 - Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-The frontend is still a demo built with fictional sample data and React state, so its sign-in form is simulated and most changes reset on refresh. The backend API in `server/` is real: signup, login, JWT-protected routes and subject CRUD run against MongoDB, tested through an in-memory database. Connecting the UI to that API (Day 8–9), adding search and pagination (Day 7), and persisting the demo's subject selections are the remaining steps.
+The frontend is still a demo built with fictional sample data and React state, so its sign-in form is simulated and most changes reset on refresh. The backend API in `server/` is real: signup, login, JWT-protected routes and subject CRUD run against MongoDB, tested through an in-memory database. Connecting the UI to that API (Day 8–9), surfacing the Day 7 course outline and paginated lists in the UI, and persisting the demo's subject selections are the remaining steps.

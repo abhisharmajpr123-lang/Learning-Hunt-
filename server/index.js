@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import subjectRoutes from './routes/subjects.js';
+import { courseRouter, subjectCourseRouter } from './routes/courses.js';
 import { getJwtSecret } from './utils/token.js';
 
 const app = express();
@@ -25,7 +26,9 @@ app.get('/health', (_req, res) => {
   });
 });
 app.use('/api/auth', authRoutes);
+app.use('/api/subjects/:subjectId/courses', subjectCourseRouter);
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/courses', courseRouter);
 app.use((req, res) =>
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.originalUrl} not found.` })
 );

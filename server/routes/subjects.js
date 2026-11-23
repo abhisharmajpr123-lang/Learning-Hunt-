@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
+import Course from '../models/Course.js';
 import Subject from '../models/Subject.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateSubject } from '../utils/validation.js';
+import { escapeRegex, paginationMeta, parsePagination, searchPattern } from '../utils/query.js';
 
 const router = Router();
 
@@ -54,10 +56,48 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
+  const { errors: pageErrors, page, limit, skip } = parsePagination(req.query);
+  const errors = [];
+  const filter = {};
+
+  // Case-insensitive search across name, category and description.
+  const search = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  if (search) {
+    const pattern = searchPattern(search);
+    filter.$or = [{ name: pattern }, { category: pattern }, { description: pattern }];
+  }
+
+  if (req.query.category !== undefined) {
+    const category = String(req.query.category).trim();
+    if (category.length < 2 || category.length > 40) errors.push('Category filter must be 2–40 characters.');
+    else filter.category = new RegExp(`^${escapeRegex(category)}$`, 'i');
+  }
+
+  if (req.query.published !== undefined) {
+    const published = String(req.query.published).trim().toLowerCase();
+    if (published !== 'true' && published !== 'false') errors.push('Published must be true or false.');
+    else filter.published = published === 'true';
+  }
+
+  if (req.query.teacher === 'me') filter.teacher = req.user.id;
+
+  if (errors.length || pageErrors.length) {
+    return res.status(400).json({ success: false, message: 'Validation failed', errors: [...errors, ...pageErrors] });
+  }
+
   try {
-    const subjects = await Subject.find().sort({ createdAt: -1 });
-    return res.status(200).json({ success: true, count: subjects.length, subjects: subjects.map(serialize) });
+    const [total, subjects] = await Promise.all([
+      Subject.countDocuments(filter),
+      Subject.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
+    return res.status(200).json({
+      success: true,
+      count: subjects.length,
+      total,
+      pagination: paginationMeta({ page, limit, total }),
+      subjects: subjects.map(serialize)
+    });
   } catch (error) {
     return next(error);
   }
@@ -92,6 +132,8 @@ router.delete('/:id', loadSubject, async (req, res, next) => {
   }
 
   try {
+    // Courses belong to a subject, so they go with it.
+    await Course.deleteMany({ subject: req.subject.id });
     await req.subject.deleteOne();
     return res.status(204).end();
   } catch (error) {
