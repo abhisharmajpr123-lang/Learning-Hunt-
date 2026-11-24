@@ -44,8 +44,18 @@
 - [x] Sections and lessons can be added incrementally; deleting a subject removes its courses
 - [x] Integration tests for courses, sections, lessons, ownership, empty states, search and pagination
 
+### Day 8 — Frontend setup, routing and auth screens
+- [x] `src/lib/api.js` API client with a normalized error type and the auth endpoints
+- [x] `AuthProvider` stores the JWT and hydrates the session from `GET /api/auth/me` on reload
+- [x] Real signup and login screens wired to `POST /api/auth/signup` and `POST /api/auth/login`; signup signs you in afterwards
+- [x] Server errors, including field-level validation messages, are shown on the form
+- [x] react-router-dom routes with a `RequireAuth` guard and role-aware portals at `/{role}/{page}`
+- [x] A signed-out visitor is redirected to `/login`; a role that does not own the URL is redirected to its own portal
+- [x] Sign out clears the token and returns to the login screen
+- [x] The localStorage demo login and the shared demo passwords are gone
+
 ### Core product features
-- [x] Simulated demo login (not production authentication)
+- [x] Real signup and login against the API, with role-aware portal routing
 - [x] Student subject selection and discovery
 - [x] Sample learning activity feed and progress breakdown
 - [x] Teacher assessment workspace and learner progress view (demo)
@@ -74,4 +84,4 @@
 - Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-The frontend is still a demo built with fictional sample data and React state, so its sign-in form is simulated and most changes reset on refresh. The backend API in `server/` is real: signup, login, JWT-protected routes and subject CRUD run against MongoDB, tested through an in-memory database. Connecting the UI to that API (Day 8–9), surfacing the Day 7 course outline and paginated lists in the UI, and persisting the demo's subject selections are the remaining steps.
+The portals still render fictional sample data held in React state, so most in-app changes reset on refresh. Signup, login and the portal routing are real: the frontend calls the API in `server/`, which runs against MongoDB and is tested through an in-memory database. Subject, course and lesson authoring is still API-only — surfacing the Day 7 outline and paginated lists in the UI (Day 9), persisting subject selections and building the teacher authoring screens are the remaining steps.

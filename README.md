@@ -13,17 +13,19 @@ Learn Hunt is a Learning Management System (LMS) prototype for ALTA BUILDER 30 T
 - [x] Teacher assessment workspace and learner progress view
 - [x] Developer subject catalogue, user management and reports
 
-The frontend still uses fictional local data and simulated sign-in. A real authentication API (signup, login and JWT-protected routes) now lives in `server/`, but the UI is not wired to it yet and learning data is not persisted.
+Signup and login now run against the real authentication API in `server/`. Credentials are checked server-side, the JWT is kept in the browser and re-verified through `GET /api/auth/me` on every reload, and each portal is a protected route. Subject, course and activity content inside the portals is still sample data.
 
-## Demo accounts
+## Signing in
 
-| Portal | Email | Password |
-|---|---|---|
-| Developer | `dev@learnhunt.demo` | `Dev@123` |
-| Teacher | `teacher@learnhunt.demo` | `Teach@123` |
-| Student | `student@learnhunt.demo` | `Study@123` |
+There are no shared demo passwords any more. Start the API and the frontend, open http://localhost:5173 and create an account on the signup screen. You are signed in straight away and land in the student portal.
 
-These credentials are for this demo only. Never use them for a real account.
+New accounts are always students, because `User.role` defaults to `student` in `server/models/User.js`. Teacher and developer roles are assigned on the server: create the account, then set its role in MongoDB.
+
+```bash
+mongosh learnhunt --eval 'db.users.updateOne({ email: "you@example.com" }, { $set: { role: "teacher" } })'
+```
+
+Sign in again after changing the role. The browser never sends a role with signup or login: the API decides which portal a token unlocks, and the router sends you to the portal that matches `user.role`.
 
 ## Run locally
 
@@ -37,6 +39,8 @@ npm run server         # API on http://localhost:4000 (needs MongoDB)
 ```
 
 `JWT_SECRET` must be at least 32 characters; the server refuses to start otherwise. Generate one with `openssl rand -hex 32`. `.env` is gitignored — only `.env.example` is committed.
+
+Signing in needs both processes running: the API on port 4000 and the frontend on 5173. The frontend calls `VITE_API_URL` (default `http://localhost:4000`), and the API's `CLIENT_ORIGIN` must match the frontend origin or CORS blocks the request.
 
 ## Tests
 
@@ -62,6 +66,7 @@ npm run preview
 - Backend: Node.js + Express in `server/`
 - Database: MongoDB + Mongoose
 - Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
+- Frontend session: a small `src/lib/api.js` client, an `AuthProvider` that hydrates from `/api/auth/me`, and react-router-dom routes guarded by `RequireAuth` and `user.role`
 - API: subject CRUD at `/api/subjects` and nested course CRUD at `/api/courses` and `/api/subjects/:subjectId/courses`, all behind `requireAuth`, with owning-teacher-or-developer checks on create, update and delete
 - Search, filtering and pagination on the subject and course list endpoints, with page metadata (`total`, `page`, `limit`, `totalPages`)
 - Testing: `node --test` with `mongodb-memory-server`
@@ -76,8 +81,8 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Day 8: wire the signup/login forms to the API, store the token and add a routing layout; Day 9 adds list and detail screens reading live data.
-2. Show the Day 7 course outline and numbered lessons in the UI (the API already returns them).
+1. Day 9: list and detail screens reading live data — subjects from `GET /api/subjects` and each course's numbered outline from `GET /api/courses/:id`, with the search, filter and pagination parameters the API already accepts.
+2. Show the Day 7 course outline and numbered lessons in the portal instead of the sample course rows.
 3. Replace sample student scores/activity with database-backed events, then role-specific dashboards.
 
 ## What I built and what I understood
