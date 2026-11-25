@@ -21,7 +21,7 @@
 - [x] `requireAuth` middleware blocks requests without a valid Bearer token
 - [x] Protected `GET /api/auth/me` returns 401 without a token and user data with one
 - [x] Identical `401` for unknown email and wrong password (no account enumeration)
-- [x] Helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
+- [x] Helmet security headers, login rate limiting on failed attempts only (10 per 2 minutes) and `Cache-Control: no-store` on auth responses
 - [x] Unit tests plus a MongoDB in-memory integration test for the full auth flow
 
 ### Day 6 — CRUD APIs for the main entity

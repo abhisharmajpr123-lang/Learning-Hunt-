@@ -90,6 +90,27 @@ test('signup -> login -> /me works end to end and stores only a password hash', 
   assert.match(me.headers.get('cache-control') || '', /no-store/);
 });
 
+test('successful logins do not count toward the rate limit', async () => {
+  const credentials = { email: 'student@example.com', password: 'StrongPass123' };
+  const remainingOf = response => {
+    const header = response.headers.get('ratelimit') || '';
+    const match = header.match(/remaining=(\d+)/);
+    return match ? Number(match[1]) : null;
+  };
+
+  let baselineRemaining = null;
+
+  // The limit is 10; more successful sign-ins than that must all be allowed.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const response = await call('POST', '/api/auth/login', { body: credentials });
+    assert.equal(response.status, 200, `successful login ${attempt + 1} was rejected`);
+
+    const remaining = remainingOf(response);
+    if (baselineRemaining === null) baselineRemaining = remaining;
+    else assert.equal(remaining, baselineRemaining, 'a successful login consumed the rate-limit budget');
+  }
+});
+
 test('repeated login attempts are rate limited', async () => {
   let response = await call('POST', '/api/auth/login', {
     body: { email: 'student@example.com', password: 'WrongPass123' }

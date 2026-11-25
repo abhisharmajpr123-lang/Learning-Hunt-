@@ -48,7 +48,7 @@ Signing in needs both processes running: the API on port 4000 and the frontend o
 npm test
 ```
 
-Runs 41 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), and a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination) against an in-memory MongoDB.
+Runs 42 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting (failed attempts only) against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), and a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination) against an in-memory MongoDB.
 
 `npm test` and `npm run build` also run on every push and pull request through GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)).
 
@@ -107,7 +107,7 @@ The authentication API is implemented and covered by an in-memory MongoDB integr
 - [x] `GET /api/auth/me` returns 401 without a token and user data with one
 - [x] Same `401 Invalid email or password.` for unknown email and wrong password
 - [x] Server fails fast when `JWT_SECRET` is missing or under 32 characters
-- [x] Helmet headers, login rate limiting (10 attempts / 15 minutes) and `Cache-Control: no-store` on auth responses
+- [x] Helmet headers, login rate limiting (10 failed attempts / 2 minutes; successful logins are not counted) and `Cache-Control: no-store` on auth responses
 - See [Day 5 API and test notes](./README-DAY5.md).
 
 ## Day 6 — CRUD APIs for the main entity
