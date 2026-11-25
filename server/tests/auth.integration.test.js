@@ -27,6 +27,12 @@ async function call(method, path, { token, body } = {}) {
   return { status: response.status, headers: response.headers, body: json };
 }
 
+function remainingOf(response) {
+  const header = response.headers.get('ratelimit') || '';
+  const match = header.match(/remaining=(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
 before(async () => {
   mongo = await MongoMemoryServer.create();
   await mongoose.connect(mongo.getUri('learnhunt_test'));
@@ -92,12 +98,6 @@ test('signup -> login -> /me works end to end and stores only a password hash', 
 
 test('successful logins do not count toward the rate limit', async () => {
   const credentials = { email: 'student@example.com', password: 'StrongPass123' };
-  const remainingOf = response => {
-    const header = response.headers.get('ratelimit') || '';
-    const match = header.match(/remaining=(\d+)/);
-    return match ? Number(match[1]) : null;
-  };
-
   let baselineRemaining = null;
 
   // The limit is 10; more successful sign-ins than that must all be allowed.
@@ -122,6 +122,42 @@ test('repeated login attempts are rate limited', async () => {
   }
   assert.equal(response.status, 429);
   assert.match(response.body.message, /Too many login attempts/);
+  assert.ok(response.headers.get('ratelimit'));
+});
+
+test('signup is rate limited on failed attempts only', async () => {
+  let baselineRemaining = null;
+
+  // Successful signups (more than the limit of 10) must not use up the budget.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const response = await call('POST', '/api/auth/signup', {
+      body: {
+        name: `Signup Limit ${attempt}`,
+        email: `signup-limit-${attempt}@example.com`,
+        password: 'StrongPass123'
+      }
+    });
+    assert.equal(response.status, 201, `successful signup ${attempt + 1} was rejected`);
+
+    const remaining = remainingOf(response);
+    if (baselineRemaining === null) baselineRemaining = remaining;
+    else assert.equal(remaining, baselineRemaining, 'a successful signup consumed the rate-limit budget');
+  }
+
+  // Repeated failed signups (duplicate email) do count and are eventually blocked.
+  let response = await call('POST', '/api/auth/signup', {
+    body: { name: 'Signup Limit', email: 'signup-limit-0@example.com', password: 'StrongPass123' }
+  });
+  assert.equal(response.status, 409);
+
+  for (let attempt = 0; attempt < 12 && response.status !== 429; attempt += 1) {
+    response = await call('POST', '/api/auth/signup', {
+      body: { name: 'Signup Limit', email: 'signup-limit-0@example.com', password: 'StrongPass123' }
+    });
+  }
+
+  assert.equal(response.status, 429);
+  assert.match(response.body.message, /Too many signup attempts/);
   assert.ok(response.headers.get('ratelimit'));
 });
 

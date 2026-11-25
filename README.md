@@ -48,7 +48,7 @@ Signing in needs both processes running: the API on port 4000 and the frontend o
 npm test
 ```
 
-Runs 42 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting (failed attempts only) against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), and a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination) against an in-memory MongoDB.
+Runs 43 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting (failed attempts only) against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), and a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination) against an in-memory MongoDB.
 
 `npm test` and `npm run build` also run on every push and pull request through GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)).
 
@@ -65,7 +65,7 @@ npm run preview
 - JavaScript, CSS and lucide-react
 - Backend: Node.js + Express in `server/`
 - Database: MongoDB + Mongoose
-- Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, login rate limiting and `Cache-Control: no-store` on auth responses
+- Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, failed-attempt-only rate limiting on login and signup and `Cache-Control: no-store` on auth responses
 - Frontend session: a small `src/lib/api.js` client, an `AuthProvider` that hydrates from `/api/auth/me`, and react-router-dom routes guarded by `RequireAuth` and `user.role`
 - API: subject CRUD at `/api/subjects` and nested course CRUD at `/api/courses` and `/api/subjects/:subjectId/courses`, all behind `requireAuth`, with owning-teacher-or-developer checks on create, update and delete
 - Search, filtering and pagination on the subject and course list endpoints, with page metadata (`total`, `page`, `limit`, `totalPages`)
@@ -107,7 +107,7 @@ The authentication API is implemented and covered by an in-memory MongoDB integr
 - [x] `GET /api/auth/me` returns 401 without a token and user data with one
 - [x] Same `401 Invalid email or password.` for unknown email and wrong password
 - [x] Server fails fast when `JWT_SECRET` is missing or under 32 characters
-- [x] Helmet headers, login rate limiting (10 failed attempts / 2 minutes; successful logins are not counted) and `Cache-Control: no-store` on auth responses
+- [x] Helmet headers, login and signup rate limiting (10 failed attempts / 2 minutes each; successful requests are not counted) and `Cache-Control: no-store` on auth responses
 - See [Day 5 API and test notes](./README-DAY5.md).
 
 ## Day 6 — CRUD APIs for the main entity

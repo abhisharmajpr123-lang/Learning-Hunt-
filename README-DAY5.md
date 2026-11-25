@@ -12,14 +12,14 @@
 - The API refuses to start if `JWT_SECRET` is missing or shorter than 32 characters.
 - Auth responses send `Cache-Control: no-store` (plus `Pragma: no-cache`) so tokens are never cached.
 - Helmet sets security headers (`X-Content-Type-Options`, CSP, no `X-Powered-By`).
-- `POST /api/auth/login` is rate limited to 10 **failed** attempts per 2 minutes per IP; the 11th returns `429`. Successful logins are not counted, so normal use cannot lock an account out.
+- `POST /api/auth/login` and `POST /api/auth/signup` are each rate limited to 10 **failed** attempts per 2 minutes per IP; the 11th returns `429`. Successful logins and signups are not counted, so normal use cannot lock an account out, while repeated bad credentials or duplicate signups are throttled.
 
 ### Endpoints
 
 | Method | Path | Auth | Result |
 | --- | --- | --- | --- |
 | GET | `/health` | none | `200 { success: true }` |
-| POST | `/api/auth/signup` | none | `201` user, `400` validation, `409` duplicate |
+| POST | `/api/auth/signup` | none | `201` user, `400` validation, `409` duplicate, `429` rate limited |
 | POST | `/api/auth/login` | none | `200 { token, tokenType, expiresIn, user }`, `400` validation, `401` bad credentials, `429` rate limited |
 | GET | `/api/auth/me` | Bearer | `200 { user }`, `401` missing/expired/unknown token |
 

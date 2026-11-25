@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
-import { loginLimiter } from '../middleware/rateLimit.js';
+import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
 import { signToken, getExpiresIn } from '../utils/token.js';
 import { validateLogin, validateSignup } from '../utils/validation.js';
 
@@ -18,7 +18,7 @@ function publicUser(user) {
   return { id: String(user.id), name: user.name, email: user.email, role: user.role };
 }
 
-router.post('/signup', async (req, res, next) => {
+router.post('/signup', signupLimiter, async (req, res, next) => {
   const { errors, cleanName, cleanEmail } = validateSignup(req.body);
   if (errors.length) return res.status(400).json({ success: false, message: 'Validation failed', errors });
 
