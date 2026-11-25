@@ -1,109 +1,771 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Brand from './components/Brand.jsx';
 import RequireAuth from './auth/RequireAuth.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import LoginPage from './pages/Login.jsx';
 import SignupPage from './pages/Signup.jsx';
+import CourseDetail from './pages/CourseDetail.jsx';
+import { CourseRow, SubjectBrowser, SubjectCard, SubjectCourses } from './components/Catalogue.jsx';
+import { SubjectIcon } from './components/SubjectIcon.jsx';
+import { styleFor } from './lib/catalogue.js';
+import { useCourses, useSubjects } from './hooks/useCatalogue.js';
+import { api } from './lib/api.js';
 import { isPortalPage, pageTitle, portalFor } from './lib/portals.js';
-import { Activity, ArrowRight, Atom, Award, Bell, BookOpen, Brain, Calculator, ChartNoAxesCombined, Check, CheckCircle2, ClipboardCheck, Code2, FileText, Flame, FlaskConical, GraduationCap, LayoutDashboard, ListChecks, LogOut, Menu, Plus, Search, ShieldCheck, Sparkles, Target, Users, Video, X, Zap } from 'lucide-react';
+import { Activity, ArrowRight, Award, Bell, BookOpen, Brain, ChartNoAxesCombined, ClipboardCheck, FileText, Flame, GraduationCap, ListChecks, LogOut, Menu, Plus, ShieldCheck, Sparkles, Target, Users, Video, Zap } from 'lucide-react';
 
-const seedSubjects=[
-  {id:'math',name:'Mathematics',category:'Science',teacher:'Rahul Sharma',lessons:18,learners:42,description:'Algebra, calculus and confident problem-solving.',icon:'math',color:'blue',published:true},
-  {id:'physics',name:'Physics',category:'Science',teacher:'Priya Sharma',lessons:16,learners:38,description:'Mechanics, electricity, waves and the world around us.',icon:'physics',color:'violet',published:true},
-  {id:'chem',name:'Chemistry',category:'Science',teacher:'Neha Singh',lessons:14,learners:31,description:'Reactions, bonding and organic chemistry.',icon:'chem',color:'orange',published:true},
-  {id:'web',name:'Web Development',category:'Technology',teacher:'Aman Gupta',lessons:22,learners:56,description:'Build responsive websites with HTML, CSS and JavaScript.',icon:'code',color:'green',published:true},
-  {id:'cs',name:'Computer Science',category:'Technology',teacher:'Karan Jain',lessons:20,learners:47,description:'Programming fundamentals, data structures and algorithms.',icon:'code',color:'cyan',published:true},
-  {id:'english',name:'English',category:'Languages',teacher:'Riya Mehta',lessons:12,learners:29,description:'Grammar, communication, reading and writing.',icon:'book',color:'pink',published:true}
+const initialActivities = [
+  { id: 1, type: 'video', subject: 'Physics', title: 'Newton’s laws of motion', detail: 'Watched 18 of 22 minutes', date: 'Today' },
+  { id: 2, type: 'quiz', subject: 'Mathematics', title: 'Quadratic equations quiz', detail: '8 of 10 correct', score: 80, date: 'Yesterday' },
+  { id: 3, type: 'assignment', subject: 'Web Development', title: 'Build a profile card', detail: 'Submitted · awaiting review', date: 'Yesterday' },
+  { id: 4, type: 'test', subject: 'Chemistry', title: 'Chemical bonding test', detail: 'Completed', score: 76, date: 'Mon, 16 Nov' }
 ];
-const initialActivities=[
-  {id:1,type:'video',subject:'Physics',title:'Newton’s laws of motion',detail:'Watched 18 of 22 minutes',date:'Today'},
-  {id:2,type:'quiz',subject:'Mathematics',title:'Quadratic equations quiz',detail:'8 of 10 correct',score:80,date:'Yesterday'},
-  {id:3,type:'assignment',subject:'Web Development',title:'Build a profile card',detail:'Submitted · awaiting review',date:'Yesterday'},
-  {id:4,type:'test',subject:'Chemistry',title:'Chemical bonding test',detail:'Completed',score:76,date:'Mon, 16 Nov'}
+const demoStudents = [
+  { name: 'Arjun Mehta', email: 'student@learnhunt.demo', subjects: 3, progress: 72, quiz: 85, assignments: '7/10' },
+  { name: 'Sana Khan', email: 'sana@learnhunt.demo', subjects: 4, progress: 84, quiz: 91, assignments: '9/10' },
+  { name: 'Dev Patel', email: 'devpatel@learnhunt.demo', subjects: 2, progress: 48, quiz: 67, assignments: '5/8' },
+  { name: 'Isha Verma', email: 'isha@learnhunt.demo', subjects: 3, progress: 63, quiz: 78, assignments: '6/8' }
 ];
-const sampleCourses=[
-  {id:'c1',subject:'math',title:'Algebra foundations',teacher:'Rahul Sharma',lessons:8,progress:75},
-  {id:'c2',subject:'physics',title:'Mechanics: motion and force',teacher:'Priya Sharma',lessons:10,progress:60},
-  {id:'c3',subject:'web',title:'Build your first website',teacher:'Aman Gupta',lessons:12,progress:25},
-  {id:'c4',subject:'chem',title:'Atomic structure',teacher:'Neha Singh',lessons:7,progress:0}
-];
-const demoStudents=[
-  {name:'Arjun Mehta',email:'student@learnhunt.demo',subjects:3,progress:72,quiz:85,assignments:'7/10'},
-  {name:'Sana Khan',email:'sana@learnhunt.demo',subjects:4,progress:84,quiz:91,assignments:'9/10'},
-  {name:'Dev Patel',email:'devpatel@learnhunt.demo',subjects:2,progress:48,quiz:67,assignments:'5/8'},
-  {name:'Isha Verma',email:'isha@learnhunt.demo',subjects:3,progress:63,quiz:78,assignments:'6/8'}
-];
-const IconFor=({name,size=22})=>{const p={size,strokeWidth:1.8};if(name==='math')return <Calculator {...p}/>;if(name==='physics')return <Atom {...p}/>;if(name==='chem')return <FlaskConical {...p}/>;if(name==='book')return <BookOpen {...p}/>;return <Code2 {...p}/>};
-const roleLabel=r=>r[0].toUpperCase()+r.slice(1);
+const roleLabel = role => role[0].toUpperCase() + role.slice(1);
 
-function Bar({value}){return <div className="bar"><i style={{width:value+'%'}}/></div>}
-function Stat({icon:Icon,label,value,note}){return <div className="stat"><span><Icon size={19}/></span><div><small>{label}</small><b>{value}</b><em>{note}</em></div></div>}
-function Heading({tag,title,subtitle}){return <div className="heading"><small>{tag}</small><h1>{title}</h1><p>{subtitle}</p></div>}
-function ActivityFeed({items}){return <div className="activity-feed">{items.map(a=><div className="activity-row" key={a.id}><span className={'activity-icon '+a.type}>{a.type==='video'?<Video/>:a.type==='quiz'?<ListChecks/>:a.type==='assignment'?<FileText/>:<ClipboardCheck/>}</span><div><b>{a.title}</b><small>{a.subject} · {a.detail}</small></div>{a.score!=null&&<strong>{a.score}%</strong>}<time>{a.date}</time></div>)}</div>}
-function SubjectCard({subject,chosen,onToggle}){return <article className="subject-card"><div className={'subject-art '+subject.color}><span><IconFor name={subject.icon} size={26}/></span><small>{subject.category}</small></div><div className="subject-content"><div className="subject-title"><h3>{subject.name}</h3>{chosen&&<CheckCircle2 size={18} className="chosen-check"/>}</div><p>{subject.description}</p><div className="subject-meta"><span><BookOpen size={14}/>{subject.lessons} lessons</span><span><Users size={14}/>{subject.learners} learners</span></div><div className="teacher-name">Teacher <b>{subject.teacher}</b></div><button className={'btn full '+(chosen?'soft-success':'primary')} onClick={onToggle}>{chosen?<><Check size={15}/> Added to my subjects</>:<><Plus size={15}/> Choose subject</>}</button></div></article>}
-function CourseRow({course,subject}){return <div className="course-row"><span className={'course-symbol '+subject.color}><IconFor name={subject.icon}/></span><div className="course-details"><b>{course.title}</b><small>{subject.name} · {course.teacher}</small><Bar value={course.progress}/></div><strong>{course.progress}%</strong></div>}
-function Table({students}){return <div className="table-scroll"><table><thead><tr><th>Student</th><th>Subjects</th><th>Progress</th><th>Quiz avg.</th><th>Assignments</th></tr></thead><tbody>{students.map(s=><tr key={s.email}><td><b>{s.name}</b><small>{s.email}</small></td><td>{s.subjects}</td><td><div className="table-progress"><Bar value={s.progress}/>{s.progress}%</div></td><td>{s.quiz}%</td><td>{s.assignments}</td></tr>)}</tbody></table></div>}
-
-function Student({page,setPage,subjects,selected,setSelected,activities,setActivities,completed,setCompleted,rewards,setRewards}){
- const today=localDayKey();
- const daily=rewards.daily.date===today?rewards.daily:{date:today,video:0,quiz:0,assignment:0,test:0,total:0};
- const level=Math.floor(rewards.xp/250)+1;
- const badges=[{name:'First Steps',icon:Award,earned:rewards.xp>=20},{name:'Quiz Explorer',icon:Brain,earned:daily.quiz>=1},{name:'Consistency',icon:Flame,earned:rewards.streak>=3},{name:'Learning Hero',icon:Sparkles,earned:rewards.xp>=500}];
- const scoredActivities=activities.filter(a=>typeof a.score==='number');
- const weakTopics=scoredActivities.filter(a=>a.score<75).slice(0,3);
- const revisionTopics=scoredActivities.filter(a=>a.score>=75&&a.score<90).slice(0,3);
- const masteredTopics=scoredActivities.filter(a=>a.score>=90).slice(0,3);
- const [search,setSearch]=useState(''),[category,setCategory]=useState('All'),[message,setMessage]=useState('');
- const mySubjects=subjects.filter(s=>selected.includes(s.id));
- const available=subjects.filter(s=>s.published&&(category==='All'||s.category===category)&&s.name.toLowerCase().includes(search.toLowerCase()));
- const addActivity=(type,title,subject,detail,score)=>{const now=Date.now();setActivities([{id:now,type,title,subject,detail,score,date:'Just now',createdAt:now},...activities]);setMessage(title+' recorded in your activity.');setRewards(prev=>{const base=prev.daily.date===today?prev.daily:{date:today,video:0,quiz:0,assignment:0,test:0,total:0};const xp={video:20,quiz:30,assignment:50,test:40}[type]||10;const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);const yKey=localDayKey(yesterday);const streak=prev.lastActive===today?prev.streak:prev.lastActive===yKey?prev.streak+1:1;return {...prev,xp:prev.xp+xp,streak,lastActive:today,daily:{...base,[type]:base[type]+1,total:base.total+1}}});};
- if(page==='discover')return <><Heading tag="FIND YOUR NEXT SUBJECT" title="Explore subjects" subtitle="Choose the subjects you want to learn. You can update your selection anytime."/><div className="toolbar"><div className="search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search subjects..."/></div><select value={category} onChange={e=>setCategory(e.target.value)}><option>All</option><option>Science</option><option>Technology</option><option>Languages</option></select><small>{available.length} subjects available</small></div><div className="subject-grid">{available.map(s=><SubjectCard key={s.id} subject={s} chosen={selected.includes(s.id)} onToggle={()=>setSelected(selected.includes(s.id)?selected.filter(x=>x!==s.id):[...selected,s.id])}/>)}</div></>;
- if(page==='subjects')return <><Heading tag="YOUR LEARNING SPACE" title="My subjects" subtitle="Your selected subjects and the courses available inside them."/><div className="subject-grid">{mySubjects.map(s=><SubjectCard key={s.id} subject={s} chosen onToggle={()=>setSelected(selected.filter(x=>x!==s.id))}/>)}</div>{!mySubjects.length&&<Empty title="No subjects selected" text="Explore the catalogue and choose what you would like to study." action={()=>setPage('discover')}/>}<div className="section-head"><h2>Continue learning</h2></div><div className="panel">{sampleCourses.filter(c=>selected.includes(c.subject)).map(c=><CourseRow key={c.id} course={c} subject={subjects.find(s=>s.id===c.subject)}/>)}</div></>;
- if(page==='progress')return <><Heading tag="YOUR LEARNING INSIGHTS" title="My progress" subtitle="See your video, quiz, assignment and test activity separately."/><div className="stats-grid"><Stat icon={Video} label="Videos completed" value={completed.length+'/6'} note="Sample lesson activity"/><Stat icon={ChartNoAxesCombined} label="Overall progress" value={Math.round(completed.length/6*100)+'%'} note="Based on completed videos"/><Stat icon={ListChecks} label="Quiz average" value="85%" note="Sample graded attempts"/><Stat icon={FileText} label="Assignments" value="7/10" note="3 need attention"/></div><section className="panel"><h2>Recent learning activity</h2><ActivityFeed items={activities}/></section></>;
- return <><Heading tag="STUDENT OVERVIEW" title="Good morning, Arjun" subtitle="Keep your curiosity moving. Every completed lesson is progress."/><div className="stats-grid"><Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Your learning interests"/><Stat icon={Video} label="Videos completed" value={completed.length+'/6'} note="Keep your streak going"/><Stat icon={ListChecks} label="Quiz average" value="85%" note="Above your 75% target"/><Stat icon={ClipboardCheck} label="Assignments" value="7/10" note="3 submissions remaining"/></div><div className="two-col day4-grid"><section className="panel rewards-panel"><div className="panel-head"><div><small>DAY 4 · LEARNING REWARDS</small><h2>Level {level} learner <span className="xp-pill"><Zap size={13}/> {rewards.xp} XP</span></h2></div><span className="streak-chip"><Flame size={16}/> {rewards.streak} day streak</span></div><div className="xp-track"><div className="xp-track-fill" style={{width:(rewards.xp%250)/250*100+'%'}}/></div><small className="xp-caption">{rewards.xp%250} / 250 XP to Level {level+1}</small><div className="badge-row">{badges.map(({name,icon:BadgeIcon,earned})=><span className={'earned-badge '+(earned?'earned':'')} key={name}><BadgeIcon size={15}/>{name}</span>)}</div></section><section className="panel mission-panel"><small>DAILY MISSIONS</small><h2>Today's goals</h2><div className="mission-line"><span><Video size={14}/> Complete 2 lessons</span><b>{Math.min(daily.video,2)}/2</b></div><Bar value={Math.min(daily.video/2*100,100)}/><div className="mission-line"><span><ListChecks size={14}/> Attempt 1 quiz</span><b>{Math.min(daily.quiz,1)}/1</b></div><Bar value={Math.min(daily.quiz*100,100)}/><div className="mission-line"><span><Target size={14}/> Complete 3 activities</span><b>{Math.min(daily.total,3)}/3</b></div><Bar value={Math.min(daily.total/3*100,100)}/></section></div><section className="panel insight-panel"><div className="panel-head"><div><small>QUIZ-BASED INTELLIGENCE</small><h2><Brain size={17}/> Topic insights</h2></div><span className="insight-note">Based on available demo quiz scores</span></div><div className="insight-columns"><div><b className="insight-title weak-title">Needs attention</b>{weakTopics.length?weakTopics.map((a,i)=><div className="topic-row" key={i}><span>{a.subject}</span><b>{a.score}%</b></div>):<small className="muted">No low-score topics yet.</small>}</div><div><b className="insight-title revise-title">Review next</b>{revisionTopics.length?revisionTopics.map((a,i)=><div className="topic-row" key={i}><span>{a.subject}</span><b>{a.score}%</b></div>):<small className="muted">Nothing queued for revision.</small>}</div><div><b className="insight-title mastered-title">Strong topics</b>{masteredTopics.length?masteredTopics.map((a,i)=><div className="topic-row" key={i}><span>{a.subject}</span><b>{a.score}%</b></div>):<small className="muted">Score 90%+ to master a topic.</small>}</div></div></section><div className="two-col"><section className="panel"><div className="panel-head"><div><small>YOUR CLASSROOM</small><h2>Continue learning</h2></div><button className="link-btn" onClick={()=>setPage('subjects')}>All subjects <ArrowRight size={14}/></button></div>{sampleCourses.filter(c=>selected.includes(c.subject)).map(c=><CourseRow key={c.id} course={c} subject={subjects.find(s=>s.id===c.subject)}/>)}</section><section className="panel"><small>THIS WEEK</small><h2>Learning snapshot</h2><div className="big-number">{Math.round(completed.length/6*100)}%<small>overall demo progress</small></div><Bar value={completed.length/6*100}/><div className="metric"><span>Quiz average</span><b>85%</b></div><div className="metric"><span>Assignments submitted</span><b>7 of 10</b></div><button className="btn secondary full" onClick={()=>setPage('progress')}>View detailed progress <ArrowRight size={14}/></button></section></div><section className="panel"><div className="panel-head"><h2>Try the demo activities</h2><small>Actions update your sample activity feed.</small></div><div className="actions"><button className="btn secondary" onClick={()=>{if(completed.length<6){setCompleted([...completed,'v'+Date.now()]);addActivity('video','Introduction to the topic','Mathematics','Watched and completed',null)}}}><Video size={15}/> Complete a video</button><button className="btn secondary" onClick={()=>addActivity('quiz','Practice quiz','Mathematics','9 of 10 correct',90)}><ListChecks size={15}/> Attempt a quiz</button><button className="btn secondary" onClick={()=>addActivity('assignment','Profile card assignment','Web Development','Submitted · awaiting review',null)}><FileText size={15}/> Submit assignment</button><button className="btn secondary" onClick={()=>addActivity('test','Chapter test','Physics','Completed · 8 of 10',80)}><ClipboardCheck size={15}/> Take a test</button></div>{message&&<p className="notice">{message}</p>}<ActivityFeed items={activities.slice(0,3)}/></section></>;
-}
-function Empty({title,text,action}){return <div className="empty"><BookOpen/><h3>{title}</h3><p>{text}</p><button className="btn primary" onClick={action}>Explore subjects</button></div>}
-
-function Teacher({page,setPage,subjects,students}){
- const [type,setType]=useState('Quiz'),[title,setTitle]=useState(''),[subject,setSubject]=useState('physics'),[notice,setNotice]=useState('');
- const mine=subjects.filter(s=>s.teacher==='Priya Sharma'||s.teacher==='Aman Gupta');
- if(page==='students')return <><Heading tag="LEARNER SUPPORT" title="Your students" subtitle="Review learner engagement and identify who may need extra support."/><section className="panel"><h2>Student overview</h2><Table students={students}/></section></>;
- if(page==='assessments')return <><Heading tag="CHECK UNDERSTANDING" title="Assessments" subtitle="Create practice activities and review student submissions."/><div className="two-col"><section className="panel"><h2>Create an assessment</h2><div className="type-picker">{['Quiz','Assignment','Test'].map(t=><button className={type===t?'active':''} onClick={()=>setType(t)} key={t}>{t}</button>)}</div><label className="field">Assessment title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Chapter 1 checkpoint"/></label><label className="field">Subject<select value={subject} onChange={e=>setSubject(e.target.value)}>{mine.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select></label><button className="btn primary" onClick={()=>{if(!title.trim()){setNotice('Enter a title first.');return}setNotice(type+' “'+title+'” added to the demo workspace.');setTitle('')}}><Plus size={15}/> Create {type.toLowerCase()}</button>{notice&&<p className="notice">{notice}</p>}</section><section className="panel"><h2>Recent submissions</h2><ActivityFeed items={[{id:11,type:'assignment',subject:'Physics',title:'Motion worksheet',detail:'Submitted by Arjun',date:'Today'},{id:12,type:'quiz',subject:'Mathematics',title:'Algebra checkpoint',detail:'12 students completed',score:82,date:'Yesterday'},{id:13,type:'test',subject:'Physics',title:'Forces unit test',detail:'8 submissions to review',date:'Monday'}]}/></section></div></>;
- if(page==='subjects')return <><Heading tag="YOUR CLASSROOM" title="My subjects" subtitle="Manage the subjects and learning content you teach."/><div className="subject-grid">{mine.map(s=><SubjectCard key={s.id} subject={s} chosen onToggle={()=>setNotice('Subject editing will be added in the next iteration.')}/>)}</div>{notice&&<p className="notice">{notice}</p>}</>;
- return <><Heading tag="TEACHER WORKSPACE" title="Good morning, Priya" subtitle="Plan lessons, support learners and see how your classes are progressing."/><div className="stats-grid"><Stat icon={BookOpen} label="Subjects teaching" value={mine.length} note="Your classroom"/><Stat icon={Users} label="Active students" value="94" note="Across demo subjects"/><Stat icon={ClipboardCheck} label="To review" value="8" note="Assignments and tests"/><Stat icon={ChartNoAxesCombined} label="Class average" value="81%" note="Quiz and test scores"/></div><div className="two-col"><section className="panel"><div className="panel-head"><h2>Teaching subjects</h2><button className="link-btn" onClick={()=>setPage('subjects')}>View all <ArrowRight size={14}/></button></div>{mine.map(s=><div className="teacher-row" key={s.id}><span className={'course-symbol '+s.color}><IconFor name={s.icon}/></span><div><b>{s.name}</b><small>{s.lessons} lessons · {s.learners} learners</small></div><span className="published">Published</span></div>)}</section><section className="panel"><small>QUICK ACTION</small><h2>Build an activity</h2><p className="muted">Create a quiz, assignment or test for one of your subjects.</p><button className="btn primary full" onClick={()=>setPage('assessments')}>Create assessment <ArrowRight size={14}/></button><button className="btn secondary full" onClick={()=>setPage('students')}>Review students <Users size={14}/></button></section></div><section className="panel"><div className="panel-head"><h2>Student progress</h2><button className="link-btn" onClick={()=>setPage('students')}>Open student list <ArrowRight size={14}/></button></div><Table students={students.slice(0,3)}/></section></>;
-}
-function Developer({page,subjects,setSubjects,students,user}){
- const [name,setName]=useState(''),[category,setCategory]=useState('Technology'),[notice,setNotice]=useState('');
- if(page==='users')return <><Heading tag="PLATFORM ACCESS" title="User management" subtitle="Review the accounts and role access across Learn Hunt."/><section className="panel"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody>{[user,...students.map(s=>({...s,role:'student'}))].map(u=><tr key={u.email}><td>{u.name}</td><td>{u.email}</td><td>{roleLabel(u.role||'student')}</td><td><span className="published">Active</span></td></tr>)}</tbody></table></section></>;
- if(page==='reports')return <><Heading tag="PLATFORM HEALTH" title="Platform reports" subtitle="High-level usage signals from the sample dataset."/><div className="stats-grid"><Stat icon={Users} label="Registered users" value="128" note="Demo platform total"/><Stat icon={BookOpen} label="Published subjects" value={subjects.length} note="Catalogue total"/><Stat icon={Activity} label="Learning activities" value="486" note="Sample activity records"/><Stat icon={ChartNoAxesCombined} label="Average completion" value="71%" note="Active learners"/></div><section className="panel"><h2>Platform activity</h2>{[['Video lessons',78],['Quizzes',64],['Assignments',52],['Tests',41]].map(([label,v])=><div className="report-row" key={label}><span>{label}</span><Bar value={v}/><b>{v}%</b></div>)}</section></>;
- return <><Heading tag="DEVELOPER CONSOLE" title="Platform overview" subtitle="Manage the learning catalogue, role access and platform health."/><div className="stats-grid"><Stat icon={Users} label="Total users" value="128" note="Students and teachers"/><Stat icon={BookOpen} label="Subjects" value={subjects.length} note="In the catalogue"/><Stat icon={ShieldCheck} label="Platform roles" value="3" note="Developer · Teacher · Student"/><Stat icon={Activity} label="Learning activity" value="486" note="Sample events"/></div><div className="two-col"><section className="panel"><div className="panel-head"><h2>Subject catalogue</h2><span className="published">{subjects.length} subjects</span></div>{subjects.map(s=><div className="teacher-row" key={s.id}><span className={'course-symbol '+s.color}><IconFor name={s.icon}/></span><div><b>{s.name}</b><small>{s.category} · {s.teacher}</small></div><span className={s.published?'published':'draft'}>{s.published?'Published':'Draft'}</span></div>)}</section><section className="panel"><small>QUICK ACTION</small><h2>Add a subject</h2><label className="field">Subject name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Biology"/></label><label className="field">Category<select value={category} onChange={e=>setCategory(e.target.value)}><option>Technology</option><option>Science</option><option>Languages</option><option>Business</option></select></label><button className="btn primary full" onClick={()=>{if(!name.trim()){setNotice('Enter a subject name first.');return}setSubjects([...subjects,{id:'new'+Date.now(),name:name.trim(),category,teacher:'Unassigned',lessons:0,learners:0,description:'New subject in the demo catalogue.',icon:'code',color:'cyan',published:false}]);setNotice(name+' added as a draft subject.');setName('')}}><Plus size={15}/> Add draft subject</button>{notice&&<p className="notice">{notice}</p>}<p className="muted">New subjects remain drafts until a teacher is assigned and content is ready.</p></section></div><section className="panel"><h2>Role permissions</h2><div className="permissions"><div><ShieldCheck/><b>Developer</b><small>Manage users, subjects and reports.</small></div><div><BookOpen/><b>Teacher</b><small>Manage assigned subjects and assessments.</small></div><div><GraduationCap/><b>Student</b><small>Choose subjects, learn and view progress.</small></div></div></section></>;
-}
-function localDayKey(date=new Date()){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
-function loadSaved(key,fallback){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback;}catch{return fallback;}}
-function Portal(){
- const navigate=useNavigate();
- const {pathname}=useLocation();
- const {user,logout:clearSession}=useAuth();
- const role=user?.role||'student';
- const [mobile,setMobile]=useState(false),[subjects,setSubjects]=useState(seedSubjects),[selected,setSelected]=useState(()=>loadSaved('learnhunt-selected',['math','physics','web'])),[activities,setActivities]=useState(()=>loadSaved('learnhunt-activities',initialActivities)),[completed,setCompleted]=useState(()=>loadSaved('learnhunt-completed',['v1','v2','v3','v4'])),[rewards,setRewards]=useState(()=>loadSaved('learnhunt-rewards',{xp:0,streak:0,lastActive:null,daily:{date:localDayKey(),video:0,quiz:0,assignment:0,test:0,total:0}}));
- useEffect(()=>{localStorage.setItem('learnhunt-selected',JSON.stringify(selected));},[selected]);
- useEffect(()=>{localStorage.setItem('learnhunt-activities',JSON.stringify(activities));},[activities]);
- useEffect(()=>{localStorage.setItem('learnhunt-completed',JSON.stringify(completed));},[completed]);
- useEffect(()=>{localStorage.setItem('learnhunt-rewards',JSON.stringify(rewards));},[rewards]);
- const nav=portalFor(role);
- const segments=pathname.split('/').filter(Boolean);
- const page=segments[1]||'overview';
- const allowed=segments[0]===role&&isPortalPage(role,page);
- const title=pageTitle(role,page);
- const initials=user.name.split(/\s+/).filter(Boolean).map(part=>part[0]).join('').slice(0,2).toUpperCase();
- const setPage=id=>navigate(`/${role}/${id}`);
- const logout=()=>{clearSession();navigate('/login',{replace:true})};
- if(!allowed)return <Navigate to={`/${role}/overview`} replace/>;
- return <div className="app-shell"><aside className={'sidebar '+(mobile?'open':'')}><Brand/><small className="side-caption">{role.toUpperCase()} PORTAL</small><nav>{nav.map(([id,label,Icon])=><button key={id} className={page===id?'active':''} onClick={()=>{setPage(id);setMobile(false)}}><Icon size={18}/>{label}</button>)}</nav><div className="sidebar-bottom"><div className="help-box"><b>Need a hand?</b><small>Explore the demo workspace</small></div><div className="user-box"><span className={'avatar '+role}>{initials}</span><div><b>{user.name}</b><small>{roleLabel(role)} account</small></div><button onClick={logout} title="Sign out"><LogOut size={16}/></button></div></div></aside>{mobile&&<button className="backdrop" onClick={()=>setMobile(false)} aria-label="Close menu"/>}<main className="main"><header className="topbar"><button className="menu" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Learn Hunt <span>/</span> <b>{title}</b></div><div className="top-actions"><span>{role} portal</span><button aria-label="Notifications"><Bell size={18}/></button><span className={'avatar '+role}>{initials}</span></div></header><div className="content">{role==='student'?<Student page={page} setPage={setPage} subjects={subjects} selected={selected} setSelected={setSelected} activities={activities} setActivities={setActivities} completed={completed} setCompleted={setCompleted} rewards={rewards} setRewards={setRewards}/>:role==='teacher'?<Teacher page={page} setPage={setPage} subjects={subjects} students={demoStudents}/>:<Developer page={page} subjects={subjects} setSubjects={setSubjects} students={demoStudents} user={user}/>}<footer>© 2026 Learn Hunt <span>Demo environment · Sample data only</span></footer></div></main></div>
+function Bar({ value }) {
+  return <div className="bar"><i style={{ width: value + '%' }} /></div>;
 }
 
-function App(){
- return <Routes><Route path="/login" element={<LoginPage/>}/><Route path="/signup" element={<SignupPage/>}/><Route path="/*" element={<RequireAuth><Portal/></RequireAuth>}/></Routes>;
+function Stat({ icon: Icon, label, value, note }) {
+  return (
+    <div className="stat">
+      <span><Icon size={19} /></span>
+      <div><small>{label}</small><b>{value}</b><em>{note}</em></div>
+    </div>
+  );
 }
+
+function Heading({ tag, title, subtitle }) {
+  return <div className="heading"><small>{tag}</small><h1>{title}</h1><p>{subtitle}</p></div>;
+}
+
+function ActivityFeed({ items }) {
+  return (
+    <div className="activity-feed">
+      {items.map(activity => (
+        <div className="activity-row" key={activity.id}>
+          <span className={'activity-icon ' + activity.type}>
+            {activity.type === 'video' ? <Video /> : activity.type === 'quiz' ? <ListChecks /> : activity.type === 'assignment' ? <FileText /> : <ClipboardCheck />}
+          </span>
+          <div><b>{activity.title}</b><small>{activity.subject} · {activity.detail}</small></div>
+          {activity.score != null && <strong>{activity.score}%</strong>}
+          <time>{activity.date}</time>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Table({ students }) {
+  return (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Subjects</th><th>Progress</th><th>Quiz avg.</th><th>Assignments</th></tr>
+        </thead>
+        <tbody>
+          {students.map(student => (
+            <tr key={student.email}>
+              <td><b>{student.name}</b><small>{student.email}</small></td>
+              <td>{student.subjects}</td>
+              <td><div className="table-progress"><Bar value={student.progress} />{student.progress}%</div></td>
+              <td>{student.quiz}%</td>
+              <td>{student.assignments}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Empty({ title, text, action }) {
+  return (
+    <div className="empty">
+      <BookOpen />
+      <h3>{title}</h3>
+      <p>{text}</p>
+      <button className="btn primary" onClick={action}>Explore subjects</button>
+    </div>
+  );
+}
+
+function Student({ page, setPage, selected, setSelected, activities, setActivities, completed, setCompleted, rewards, setRewards, goCourse }) {
+  const today = localDayKey();
+  const daily = rewards.daily.date === today ? rewards.daily : { date: today, video: 0, quiz: 0, assignment: 0, test: 0, total: 0 };
+  const level = Math.floor(rewards.xp / 250) + 1;
+  const badges = [
+    { name: 'First Steps', icon: Award, earned: rewards.xp >= 20 },
+    { name: 'Quiz Explorer', icon: Brain, earned: daily.quiz >= 1 },
+    { name: 'Consistency', icon: Flame, earned: rewards.streak >= 3 },
+    { name: 'Learning Hero', icon: Sparkles, earned: rewards.xp >= 500 }
+  ];
+  const scoredActivities = activities.filter(activity => typeof activity.score === 'number');
+  const weakTopics = scoredActivities.filter(activity => activity.score < 75).slice(0, 3);
+  const revisionTopics = scoredActivities.filter(activity => activity.score >= 75 && activity.score < 90).slice(0, 3);
+  const masteredTopics = scoredActivities.filter(activity => activity.score >= 90).slice(0, 3);
+
+  const [message, setMessage] = useState('');
+  const [openSubjectId, setOpenSubjectId] = useState(null);
+
+  // Live catalogue: published subjects, plus every course of the chosen subjects.
+  const catalogue = useSubjects({ published: 'true', limit: 50 });
+  const courseFeed = useCourses({ limit: 50 });
+  const mySubjects = catalogue.subjects.filter(subject => selected.includes(subject.id));
+  const myCourses = courseFeed.courses.filter(course => selected.includes(course.subject));
+  const subjectFor = course => catalogue.subjects.find(subject => subject.id === course.subject);
+  const openSubject = mySubjects.find(subject => subject.id === openSubjectId) || null;
+  const toggleSubject = id =>
+    setSelected(chosen => (chosen.includes(id) ? chosen.filter(item => item !== id) : [...chosen, id]));
+
+  const addActivity = (type, title, subject, detail, score) => {
+    const now = Date.now();
+    setActivities([{ id: now, type, title, subject, detail, score, date: 'Just now', createdAt: now }, ...activities]);
+    setMessage(title + ' recorded in your activity.');
+    setRewards(prev => {
+      const base = prev.daily.date === today ? prev.daily : { date: today, video: 0, quiz: 0, assignment: 0, test: 0, total: 0 };
+      const xp = { video: 20, quiz: 30, assignment: 50, test: 40 }[type] || 10;
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yKey = localDayKey(yesterday);
+      const streak = prev.lastActive === today ? prev.streak : prev.lastActive === yKey ? prev.streak + 1 : 1;
+      return {
+        ...prev,
+        xp: prev.xp + xp,
+        streak,
+        lastActive: today,
+        daily: { ...base, [type]: base[type] + 1, total: base.total + 1 }
+      };
+    });
+  };
+
+  // Sample ids from the old demo catalogue can survive in localStorage; drop anything the API no longer knows.
+  useEffect(() => {
+    if (catalogue.status !== 'ready' || !catalogue.subjects.length) return;
+    const known = new Set(catalogue.subjects.map(subject => subject.id));
+    setSelected(current => {
+      const next = current.filter(id => known.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [catalogue.status, catalogue.subjects, setSelected]);
+
+  if (page === 'discover') {
+    return (
+      <>
+        <Heading
+          tag="FIND YOUR NEXT SUBJECT"
+          title="Explore subjects"
+          subtitle="Search, filter and page through the live catalogue, then choose what you want to learn."
+        />
+        <SubjectBrowser
+          filters={{ published: 'true' }}
+          selectable
+          chosenIds={selected}
+          onToggle={toggleSubject}
+          onOpenCourse={goCourse}
+          emptyTitle="No subjects match"
+          emptyText="Try a different search term or category."
+        />
+      </>
+    );
+  }
+
+  if (page === 'subjects') {
+    return (
+      <>
+        <Heading tag="YOUR LEARNING SPACE" title="My subjects" subtitle="Your chosen subjects and the live courses inside them." />
+        {catalogue.status === 'loading' && <p className="muted">Loading your subjects…</p>}
+        {catalogue.status === 'error' && <p className="error-notice">{catalogue.error}</p>}
+        <div className="subject-grid">
+          {mySubjects.map(subject => (
+            <SubjectCard
+              key={subject.id}
+              subject={subject}
+              chosen
+              onToggle={() => toggleSubject(subject.id)}
+              expanded={openSubjectId === subject.id}
+              onCourses={() => setOpenSubjectId(openSubjectId === subject.id ? null : subject.id)}
+            />
+          ))}
+        </div>
+        {openSubject && (
+          <SubjectCourses subject={openSubject} onOpenCourse={goCourse} onClose={() => setOpenSubjectId(null)} />
+        )}
+        {catalogue.status === 'ready' && !mySubjects.length && (
+          <Empty title="No subjects selected" text="Explore the catalogue and choose what you would like to study." action={() => setPage('discover')} />
+        )}
+        <div className="section-head"><h2>Continue learning</h2></div>
+        <section className="panel">
+          {courseFeed.status === 'loading' && <p className="muted">Loading courses…</p>}
+          {courseFeed.status === 'error' && <p className="error-notice">{courseFeed.error}</p>}
+          {myCourses.length ? (
+            myCourses.map(course => (
+              <CourseRow key={course.id} course={course} subject={subjectFor(course)} onOpen={() => goCourse(course.id)} />
+            ))
+          ) : (
+            <p className="muted">Choose a subject to see its courses here.</p>
+          )}
+        </section>
+      </>
+    );
+  }
+
+  if (page === 'progress') {
+    return (
+      <>
+        <Heading tag="YOUR LEARNING INSIGHTS" title="My progress" subtitle="See your video, quiz, assignment and test activity separately." />
+        <div className="stats-grid">
+          <Stat icon={Video} label="Videos completed" value={completed.length + '/6'} note="Sample lesson activity" />
+          <Stat icon={ChartNoAxesCombined} label="Overall progress" value={Math.round(completed.length / 6 * 100) + '%'} note="Based on completed videos" />
+          <Stat icon={ListChecks} label="Quiz average" value="85%" note="Sample graded attempts" />
+          <Stat icon={FileText} label="Assignments" value="7/10" note="3 need attention" />
+        </div>
+        <section className="panel">
+          <h2>Recent learning activity</h2>
+          <ActivityFeed items={activities} />
+        </section>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Heading tag="STUDENT OVERVIEW" title="Good morning, Arjun" subtitle="Keep your curiosity moving. Every completed lesson is progress." />
+      <div className="stats-grid">
+        <Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Your learning interests" />
+        <Stat icon={Video} label="Videos completed" value={completed.length + '/6'} note="Keep your streak going" />
+        <Stat icon={ListChecks} label="Quiz average" value="85%" note="Above your 75% target" />
+        <Stat icon={ClipboardCheck} label="Assignments" value="7/10" note="3 submissions remaining" />
+      </div>
+      <div className="two-col day4-grid">
+        <section className="panel rewards-panel">
+          <div className="panel-head">
+            <div>
+              <small>DAY 4 · LEARNING REWARDS</small>
+              <h2>Level {level} learner <span className="xp-pill"><Zap size={13} /> {rewards.xp} XP</span></h2>
+            </div>
+            <span className="streak-chip"><Flame size={16} /> {rewards.streak} day streak</span>
+          </div>
+          <div className="xp-track"><div className="xp-track-fill" style={{ width: (rewards.xp % 250) / 250 * 100 + '%' }} /></div>
+          <small className="xp-caption">{rewards.xp % 250} / 250 XP to Level {level + 1}</small>
+          <div className="badge-row">
+            {badges.map(({ name, icon: BadgeIcon, earned }) => (
+              <span className={'earned-badge ' + (earned ? 'earned' : '')} key={name}><BadgeIcon size={15} />{name}</span>
+            ))}
+          </div>
+        </section>
+        <section className="panel mission-panel">
+          <small>DAILY MISSIONS</small>
+          <h2>Today's goals</h2>
+          <div className="mission-line"><span><Video size={14} /> Complete 2 lessons</span><b>{Math.min(daily.video, 2)}/2</b></div>
+          <Bar value={Math.min(daily.video / 2 * 100, 100)} />
+          <div className="mission-line"><span><ListChecks size={14} /> Attempt 1 quiz</span><b>{Math.min(daily.quiz, 1)}/1</b></div>
+          <Bar value={Math.min(daily.quiz * 100, 100)} />
+          <div className="mission-line"><span><Target size={14} /> Complete 3 activities</span><b>{Math.min(daily.total, 3)}/3</b></div>
+          <Bar value={Math.min(daily.total / 3 * 100, 100)} />
+        </section>
+      </div>
+      <section className="panel insight-panel">
+        <div className="panel-head">
+          <div><small>QUIZ-BASED INTELLIGENCE</small><h2><Brain size={17} /> Topic insights</h2></div>
+          <span className="insight-note">Based on available demo quiz scores</span>
+        </div>
+        <div className="insight-columns">
+          <div>
+            <b className="insight-title weak-title">Needs attention</b>
+            {weakTopics.length ? weakTopics.map((activity, index) => (
+              <div className="topic-row" key={index}><span>{activity.subject}</span><b>{activity.score}%</b></div>
+            )) : <small className="muted">No low-score topics yet.</small>}
+          </div>
+          <div>
+            <b className="insight-title revise-title">Review next</b>
+            {revisionTopics.length ? revisionTopics.map((activity, index) => (
+              <div className="topic-row" key={index}><span>{activity.subject}</span><b>{activity.score}%</b></div>
+            )) : <small className="muted">Nothing queued for revision.</small>}
+          </div>
+          <div>
+            <b className="insight-title mastered-title">Strong topics</b>
+            {masteredTopics.length ? masteredTopics.map((activity, index) => (
+              <div className="topic-row" key={index}><span>{activity.subject}</span><b>{activity.score}%</b></div>
+            )) : <small className="muted">Score 90%+ to master a topic.</small>}
+          </div>
+        </div>
+      </section>
+      <div className="two-col">
+        <section className="panel">
+          <div className="panel-head">
+            <div><small>YOUR CLASSROOM</small><h2>Continue learning</h2></div>
+            <button className="link-btn" onClick={() => setPage('subjects')}>All subjects <ArrowRight size={14} /></button>
+          </div>
+          {courseFeed.status === 'loading' && <p className="muted">Loading courses…</p>}
+          {courseFeed.status === 'error' && <p className="error-notice">{courseFeed.error}</p>}
+          {myCourses.length ? (
+            myCourses.slice(0, 4).map(course => (
+              <CourseRow key={course.id} course={course} subject={subjectFor(course)} onOpen={() => goCourse(course.id)} />
+            ))
+          ) : (
+            <p className="muted">Choose a subject to see its courses here.</p>
+          )}
+        </section>
+        <section className="panel">
+          <small>THIS WEEK</small>
+          <h2>Learning snapshot</h2>
+          <div className="big-number">{Math.round(completed.length / 6 * 100)}%<small>overall demo progress</small></div>
+          <Bar value={completed.length / 6 * 100} />
+          <div className="metric"><span>Quiz average</span><b>85%</b></div>
+          <div className="metric"><span>Assignments submitted</span><b>7 of 10</b></div>
+          <button className="btn secondary full" onClick={() => setPage('progress')}>View detailed progress <ArrowRight size={14} /></button>
+        </section>
+      </div>
+      <section className="panel">
+        <div className="panel-head"><h2>Try the demo activities</h2><small>Actions update your sample activity feed.</small></div>
+        <div className="actions">
+          <button className="btn secondary" onClick={() => { if (completed.length < 6) { setCompleted([...completed, 'v' + Date.now()]); addActivity('video', 'Introduction to the topic', 'Mathematics', 'Watched and completed', null); } }}><Video size={15} /> Complete a video</button>
+          <button className="btn secondary" onClick={() => addActivity('quiz', 'Practice quiz', 'Mathematics', '9 of 10 correct', 90)}><ListChecks size={15} /> Attempt a quiz</button>
+          <button className="btn secondary" onClick={() => addActivity('assignment', 'Profile card assignment', 'Web Development', 'Submitted · awaiting review', null)}><FileText size={15} /> Submit assignment</button>
+          <button className="btn secondary" onClick={() => addActivity('test', 'Chapter test', 'Physics', 'Completed · 8 of 10', 80)}><ClipboardCheck size={15} /> Take a test</button>
+        </div>
+        {message && <p className="notice">{message}</p>}
+        <ActivityFeed items={activities.slice(0, 3)} />
+      </section>
+    </>
+  );
+}
+
+function Teacher({ page, setPage, students, goCourse }) {
+  const [type, setType] = useState('Quiz');
+  const [title, setTitle] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // The API owns the relationship: "teacher=me" returns the subjects you own.
+  const mine = useSubjects({ teacher: 'me', limit: 50 });
+  const subjects = mine.subjects;
+  const activeSubject = subjects.find(subject => subject.id === subjectId) || subjects[0] || null;
+
+  if (page === 'students') {
+    return (
+      <>
+        <Heading tag="LEARNER SUPPORT" title="Your students" subtitle="Review learner engagement and identify who may need extra support." />
+        <section className="panel"><h2>Student overview</h2><Table students={students} /></section>
+      </>
+    );
+  }
+
+  if (page === 'assessments') {
+    return (
+      <>
+        <Heading tag="CHECK UNDERSTANDING" title="Assessments" subtitle="Create practice activities and review student submissions." />
+        <div className="two-col">
+          <section className="panel">
+            <h2>Create an assessment</h2>
+            <div className="type-picker">
+              {['Quiz', 'Assignment', 'Test'].map(item => (
+                <button className={type === item ? 'active' : ''} onClick={() => setType(item)} key={item}>{item}</button>
+              ))}
+            </div>
+            <label className="field">Assessment title<input value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Chapter 1 checkpoint" /></label>
+            <label className="field">
+              Subject
+              <select value={activeSubject?.id || ''} onChange={event => setSubjectId(event.target.value)} disabled={!subjects.length}>
+                {subjects.length ? subjects.map(subject => (
+                  <option value={subject.id} key={subject.id}>{subject.name}</option>
+                )) : <option value="">No subjects yet</option>}
+              </select>
+            </label>
+            <button
+              className="btn primary"
+              onClick={() => {
+                if (!title.trim()) { setNotice('Enter a title first.'); return; }
+                setNotice(type + ' “' + title + '” added to the demo workspace.');
+                setTitle('');
+              }}
+            >
+              <Plus size={15} /> Create {type.toLowerCase()}
+            </button>
+            {notice && <p className="notice">{notice}</p>}
+          </section>
+          <section className="panel">
+            <h2>Recent submissions</h2>
+            <ActivityFeed items={[
+              { id: 11, type: 'assignment', subject: 'Physics', title: 'Motion worksheet', detail: 'Submitted by Arjun', date: 'Today' },
+              { id: 12, type: 'quiz', subject: 'Mathematics', title: 'Algebra checkpoint', detail: '12 students completed', score: 82, date: 'Yesterday' },
+              { id: 13, type: 'test', subject: 'Physics', title: 'Forces unit test', detail: '8 submissions to review', date: 'Monday' }
+            ]} />
+          </section>
+        </div>
+      </>
+    );
+  }
+
+  if (page === 'subjects') {
+    return (
+      <>
+        <Heading tag="YOUR CLASSROOM" title="My subjects" subtitle="The subjects where you are the teacher, with their live course outline." />
+        <SubjectBrowser
+          filters={{ teacher: 'me' }}
+          onOpenCourse={goCourse}
+          emptyTitle="No subjects yet"
+          emptyText="A developer makes you the teacher of a subject, and it appears here."
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Heading tag="TEACHER WORKSPACE" title="Good morning, Priya" subtitle="Plan lessons, support learners and see how your classes are progressing." />
+      <div className="stats-grid">
+        <Stat icon={BookOpen} label="Subjects teaching" value={mine.total} note="Your classroom" />
+        <Stat icon={Users} label="Active students" value="94" note="Across demo subjects" />
+        <Stat icon={ClipboardCheck} label="To review" value="8" note="Assignments and tests" />
+        <Stat icon={ChartNoAxesCombined} label="Class average" value="81%" note="Quiz and test scores" />
+      </div>
+      <div className="two-col">
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Teaching subjects</h2>
+            <button className="link-btn" onClick={() => setPage('subjects')}>View all <ArrowRight size={14} /></button>
+          </div>
+          {mine.status === 'loading' && <p className="muted">Loading subjects…</p>}
+          {mine.status === 'error' && <p className="error-notice">{mine.error}</p>}
+          {subjects.map(subject => {
+            const style = styleFor(subject);
+            return (
+              <div className="teacher-row" key={subject.id}>
+                <span className={'course-symbol ' + style.color}><SubjectIcon name={style.icon} /></span>
+                <div><b>{subject.name}</b><small>{subject.category}</small></div>
+                <span className={subject.published ? 'published' : 'draft'}>{subject.published ? 'Published' : 'Draft'}</span>
+              </div>
+            );
+          })}
+          {mine.status === 'ready' && !subjects.length && <p className="muted">No subjects are assigned to you yet.</p>}
+        </section>
+        <section className="panel">
+          <small>QUICK ACTION</small>
+          <h2>Build an activity</h2>
+          <p className="muted">Create a quiz, assignment or test for one of your subjects.</p>
+          <button className="btn primary full" onClick={() => setPage('assessments')}>Create assessment <ArrowRight size={14} /></button>
+          <button className="btn secondary full" onClick={() => setPage('students')}>Review students <Users size={14} /></button>
+        </section>
+      </div>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Student progress</h2>
+          <button className="link-btn" onClick={() => setPage('students')}>Open student list <ArrowRight size={14} /></button>
+        </div>
+        <Table students={students.slice(0, 3)} />
+      </section>
+    </>
+  );
+}
+
+function Developer({ page, setPage, students, user, goCourse }) {
+  const { token } = useAuth();
+  const catalogue = useSubjects({ limit: 50 });
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Technology');
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [browserVersion, setBrowserVersion] = useState(0);
+
+  const addSubject = async event => {
+    event.preventDefault();
+    const cleanName = name.trim();
+    if (!cleanName) { setNotice('Enter a subject name first.'); return; }
+
+    setSaving(true);
+    try {
+      await api.createSubject({ name: cleanName, category }, token);
+      setNotice(cleanName + ' added as a draft subject.');
+      setName('');
+      catalogue.reload();
+      setBrowserVersion(version => version + 1);
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (page === 'users') {
+    return (
+      <>
+        <Heading tag="PLATFORM ACCESS" title="User management" subtitle="Review the accounts and role access across Learn Hunt." />
+        <section className="panel">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+            <tbody>
+              {[user, ...students.map(student => ({ ...student, role: 'student' }))].map(account => (
+                <tr key={account.email}>
+                  <td>{account.name}</td>
+                  <td>{account.email}</td>
+                  <td>{roleLabel(account.role || 'student')}</td>
+                  <td><span className="published">Active</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </>
+    );
+  }
+
+  if (page === 'subjects') {
+    return (
+      <>
+        <Heading tag="PLATFORM CATALOGUE" title="Subject catalogue" subtitle="Every subject in MongoDB, with server-side search, filters and pagination." />
+        <SubjectBrowser
+          key={browserVersion}
+          showPublishedFilter
+          onOpenCourse={goCourse}
+          emptyTitle="The catalogue is empty"
+          emptyText="Add the first subject with the form below."
+        />
+        <div className="two-col">
+          <section className="panel">
+            <small>QUICK ACTION</small>
+            <h2>Add a subject</h2>
+            <form onSubmit={addSubject}>
+              <label className="field">Subject name<input value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Biology" /></label>
+              <label className="field">
+                Category
+                <select value={category} onChange={event => setCategory(event.target.value)}>
+                  <option>Technology</option>
+                  <option>Science</option>
+                  <option>Languages</option>
+                  <option>Business</option>
+                </select>
+              </label>
+              <button className="btn primary full" type="submit" disabled={saving}>
+                <Plus size={15} /> {saving ? 'Adding…' : 'Add draft subject'}
+              </button>
+            </form>
+            {notice && <p className="notice">{notice}</p>}
+            <p className="muted">POST /api/subjects keeps the subject as a draft until a teacher publishes it.</p>
+          </section>
+          <section className="panel">
+            <h2>Role permissions</h2>
+            <div className="permissions">
+              <div><ShieldCheck /><b>Developer</b><small>Manage users, subjects and reports.</small></div>
+              <div><BookOpen /><b>Teacher</b><small>Manage assigned subjects and assessments.</small></div>
+              <div><GraduationCap /><b>Student</b><small>Choose subjects, learn and view progress.</small></div>
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  }
+
+  if (page === 'reports') {
+    return (
+      <>
+        <Heading tag="PLATFORM HEALTH" title="Platform reports" subtitle="High-level usage signals for the platform." />
+        <div className="stats-grid">
+          <Stat icon={Users} label="Registered users" value="128" note="Demo platform total" />
+          <Stat icon={BookOpen} label="Subjects" value={catalogue.total} note="Live catalogue total" />
+          <Stat icon={Activity} label="Learning activities" value="486" note="Sample activity records" />
+          <Stat icon={ChartNoAxesCombined} label="Average completion" value="71%" note="Active learners" />
+        </div>
+        <section className="panel">
+          <h2>Platform activity</h2>
+          {[['Video lessons', 78], ['Quizzes', 64], ['Assignments', 52], ['Tests', 41]].map(([label, value]) => (
+            <div className="report-row" key={label}><span>{label}</span><Bar value={value} /><b>{value}%</b></div>
+          ))}
+        </section>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Heading tag="DEVELOPER CONSOLE" title="Platform overview" subtitle="Manage the learning catalogue, role access and platform health." />
+      <div className="stats-grid">
+        <Stat icon={Users} label="Total users" value="128" note="Students and teachers" />
+        <Stat icon={BookOpen} label="Subjects" value={catalogue.total} note="In the catalogue" />
+        <Stat icon={ShieldCheck} label="Platform roles" value="3" note="Developer · Teacher · Student" />
+        <Stat icon={Activity} label="Learning activity" value="486" note="Sample events" />
+      </div>
+      <div className="two-col">
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Subject catalogue</h2>
+            <button className="link-btn" onClick={() => setPage('subjects')}>View catalogue <ArrowRight size={14} /></button>
+          </div>
+          {catalogue.status === 'loading' && <p className="muted">Loading subjects…</p>}
+          {catalogue.status === 'error' && <p className="error-notice">{catalogue.error}</p>}
+          {catalogue.subjects.slice(0, 5).map(subject => {
+            const style = styleFor(subject);
+            return (
+              <div className="teacher-row" key={subject.id}>
+                <span className={'course-symbol ' + style.color}><SubjectIcon name={style.icon} /></span>
+                <div><b>{subject.name}</b><small>{subject.category}</small></div>
+                <span className={subject.published ? 'published' : 'draft'}>{subject.published ? 'Published' : 'Draft'}</span>
+              </div>
+            );
+          })}
+          {catalogue.status === 'ready' && !catalogue.subjects.length && <p className="muted">The catalogue is empty. Add a subject from the catalogue page.</p>}
+        </section>
+        <section className="panel">
+          <small>QUICK ACTION</small>
+          <h2>Add a subject</h2>
+          <form onSubmit={addSubject}>
+            <label className="field">Subject name<input value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Biology" /></label>
+            <label className="field">
+              Category
+              <select value={category} onChange={event => setCategory(event.target.value)}>
+                <option>Technology</option>
+                <option>Science</option>
+                <option>Languages</option>
+                <option>Business</option>
+              </select>
+            </label>
+            <button className="btn primary full" type="submit" disabled={saving}>
+              <Plus size={15} /> {saving ? 'Adding…' : 'Add draft subject'}
+            </button>
+          </form>
+          {notice && <p className="notice">{notice}</p>}
+          <p className="muted">New subjects remain drafts until a teacher is assigned and content is ready.</p>
+        </section>
+      </div>
+      <section className="panel">
+        <h2>Role permissions</h2>
+        <div className="permissions">
+          <div><ShieldCheck /><b>Developer</b><small>Manage users, subjects and reports.</small></div>
+          <div><BookOpen /><b>Teacher</b><small>Manage assigned subjects and assessments.</small></div>
+          <div><GraduationCap /><b>Student</b><small>Choose subjects, learn and view progress.</small></div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function localDayKey(date = new Date()) {
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
+
+function loadSaved(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function Portal() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { user, logout: clearSession } = useAuth();
+  const role = user?.role || 'student';
+  const [mobile, setMobile] = useState(false);
+  const [selected, setSelected] = useState(() => loadSaved('learnhunt-selected', []));
+  const [activities, setActivities] = useState(() => loadSaved('learnhunt-activities', initialActivities));
+  const [completed, setCompleted] = useState(() => loadSaved('learnhunt-completed', ['v1', 'v2', 'v3', 'v4']));
+  const [rewards, setRewards] = useState(() => loadSaved('learnhunt-rewards', {
+    xp: 0,
+    streak: 0,
+    lastActive: null,
+    daily: { date: localDayKey(), video: 0, quiz: 0, assignment: 0, test: 0, total: 0 }
+  }));
+
+  useEffect(() => { localStorage.setItem('learnhunt-selected', JSON.stringify(selected)); }, [selected]);
+  useEffect(() => { localStorage.setItem('learnhunt-activities', JSON.stringify(activities)); }, [activities]);
+  useEffect(() => { localStorage.setItem('learnhunt-completed', JSON.stringify(completed)); }, [completed]);
+  useEffect(() => { localStorage.setItem('learnhunt-rewards', JSON.stringify(rewards)); }, [rewards]);
+
+  const nav = portalFor(role);
+  const segments = pathname.split('/').filter(Boolean);
+  const isCourseOutline = segments[1] === 'courses' && Boolean(segments[2]);
+  const page = segments[1] || 'overview';
+  const allowed = segments[0] === role && (isCourseOutline || isPortalPage(role, page));
+  const title = isCourseOutline ? 'Course outline' : pageTitle(role, page);
+  const initials = user.name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const setPage = id => navigate(`/${role}/${id}`);
+  const goCourse = id => navigate(`/${role}/courses/${id}`);
+  const logout = () => { clearSession(); navigate('/login', { replace: true }); };
+
+  if (!allowed) return <Navigate to={`/${role}/overview`} replace />;
+
+  return (
+    <div className="app-shell">
+      <aside className={'sidebar ' + (mobile ? 'open' : '')}>
+        <Brand />
+        <small className="side-caption">{role.toUpperCase()} PORTAL</small>
+        <nav>
+          {nav.map(([id, label, Icon]) => (
+            <button
+              key={id}
+              className={!isCourseOutline && page === id ? 'active' : ''}
+              onClick={() => { setPage(id); setMobile(false); }}
+            >
+              <Icon size={18} />{label}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="help-box"><b>Need a hand?</b><small>Explore the demo workspace</small></div>
+          <div className="user-box">
+            <span className={'avatar ' + role}>{initials}</span>
+            <div><b>{user.name}</b><small>{roleLabel(role)} account</small></div>
+            <button onClick={logout} title="Sign out"><LogOut size={16} /></button>
+          </div>
+        </div>
+      </aside>
+      {mobile && <button className="backdrop" onClick={() => setMobile(false)} aria-label="Close menu" />}
+      <main className="main">
+        <header className="topbar">
+          <button className="menu" onClick={() => setMobile(true)}><Menu /></button>
+          <div className="crumb">Learn Hunt <span>/</span> <b>{title}</b></div>
+          <div className="top-actions">
+            <span>{role} portal</span>
+            <button aria-label="Notifications"><Bell size={18} /></button>
+            <span className={'avatar ' + role}>{initials}</span>
+          </div>
+        </header>
+        <div className="content">
+          {isCourseOutline ? (
+            <CourseDetail courseId={segments[2]} onBack={() => setPage('subjects')} />
+          ) : role === 'student' ? (
+            <Student
+              page={page}
+              setPage={setPage}
+              selected={selected}
+              setSelected={setSelected}
+              activities={activities}
+              setActivities={setActivities}
+              completed={completed}
+              setCompleted={setCompleted}
+              rewards={rewards}
+              setRewards={setRewards}
+              goCourse={goCourse}
+            />
+          ) : role === 'teacher' ? (
+            <Teacher page={page} setPage={setPage} students={demoStudents} goCourse={goCourse} />
+          ) : (
+            <Developer page={page} setPage={setPage} students={demoStudents} user={user} goCourse={goCourse} />
+          )}
+          <footer>© 2026 Learn Hunt <span>Catalogue data comes from the Learn Hunt API</span></footer>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/*" element={<RequireAuth><Portal /></RequireAuth>} />
+    </Routes>
+  );
+}
+
 export default App;

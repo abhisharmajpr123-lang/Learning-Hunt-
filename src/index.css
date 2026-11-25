@@ -10,6 +10,45 @@
 /* Day 4: learning rewards and intelligence panels */
 .day4-grid{grid-template-columns:1fr 1fr;margin-bottom:15px}
 .rewards-panel,.mission-panel,.insight-panel{overflow:hidden}
+
+/* Day 9: live catalogue and course outline */
+.course-open{width:100%;border:0;background:transparent;padding:12px 8px;border-radius:9px;text-align:left;color:inherit}
+.course-open:hover{background:#f7f9ff}
+.course-open>svg{color:#a3adbd;flex-shrink:0;margin-left:4px}
+.course-panel{margin-top:14px}
+.subject-actions{display:grid;justify-items:center;gap:2px}
+.subject-actions .link-btn{margin-top:9px}
+.error-notice{font-size:10px;color:#c34d5a;background:#fff0f1;border-radius:7px;padding:9px;margin:0 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pager{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px;font-size:10px;color:#8290a3;flex-wrap:wrap}
+.pager button{height:31px;border:1px solid #e2e7f0;background:#fff;border-radius:7px;padding:0 10px;display:inline-flex;align-items:center;gap:4px;color:#5c6980;font-size:10px}
+.pager button:disabled{opacity:.45;cursor:not-allowed}
+.pager strong{color:#3a465d;font-weight:700}
+.back-btn{margin-bottom:16px;font-size:10px}
+.course-hero{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:14px}
+.course-hero>div{flex:1;min-width:0}
+.course-hero small{font-size:9px;letter-spacing:1px;color:#8996aa;font-weight:800;text-transform:uppercase}
+.course-hero h1{font:800 22px Manrope;letter-spacing:-.6px;color:#253149;margin:6px 0 5px}
+.course-hero p{font-size:10px;color:#8793a5;margin:0;line-height:1.6}
+.course-hero>span:last-child{align-self:flex-start}
+.meta-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:6px 10px;font-size:9px;color:#68768c}
+.outline-note{font-size:10px;color:#8793a5;margin:0 0 14px}
+.outline{display:grid;gap:12px}
+.outline-section{background:#fff;border:1px solid var(--line);border-radius:11px;padding:16px}
+.outline-head{display:flex;align-items:center;gap:11px;border-bottom:1px solid #f0f2f6;padding-bottom:12px}
+.outline-number{width:30px;height:30px;border-radius:9px;background:#eef2ff;color:#4255ff;display:grid;place-items:center;font:800 12px Manrope;flex-shrink:0}
+.outline-head small{font-size:8px;letter-spacing:1px;color:#8996aa;font-weight:800}
+.outline-head h3{font:800 14px Manrope;color:#344057;margin:3px 0 0}
+.outline-count{margin-left:auto;font-size:9px;color:#929dae;white-space:nowrap}
+.lesson-list{list-style:none;padding:0;margin:0;display:grid}
+.lesson-list li{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-top:1px solid #f0f2f6}
+.lesson-list li:first-child{border-top:0}
+.lesson-number{width:24px;height:24px;border-radius:50%;background:#f2f5ff;color:#5572c9;display:grid;place-items:center;font-size:9px;font-weight:800;flex-shrink:0;margin-top:1px}
+.lesson-body{flex:1;min-width:0;display:grid;gap:3px}
+.lesson-body b{font-size:10px;color:#39465d}
+.lesson-body p{margin:0;font-size:9px;line-height:1.55;color:#8995a6}
+.lesson-duration{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:#9aa4b3;font-style:normal;white-space:nowrap}
+@media(max-width:760px){.course-hero{flex-wrap:wrap}.outline-count{margin-left:0;width:100%}.pager{justify-content:flex-start}}
 .xp-pill,.streak-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;background:#f0f3ff;color:#4255ff;font-size:10px;font-weight:800;vertical-align:middle}
 .streak-chip{background:#fff3e8;color:#d58a47;white-space:nowrap}
 .xp-track{height:8px;background:#edf0f5;border-radius:20px;overflow:hidden;margin:10px 0 4px}

@@ -9,6 +9,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Turn a params object into a query string, skipping empty values. */
+function queryString(params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : '';
+}
+
 async function request(path, { method = 'GET', body, token } = {}) {
   const headers = { Accept: 'application/json' };
   if (body) headers['Content-Type'] = 'application/json';
@@ -42,7 +53,15 @@ async function request(path, { method = 'GET', body, token } = {}) {
 export const api = {
   signup: body => request('/api/auth/signup', { method: 'POST', body }),
   login: body => request('/api/auth/login', { method: 'POST', body }),
-  me: token => request('/api/auth/me', { token })
+  me: token => request('/api/auth/me', { token }),
+
+  // Catalogue reads take the query parameters the API already supports.
+  subjects: (params, token) => request(`/api/subjects${queryString(params)}`, { token }),
+  subject: (id, token) => request(`/api/subjects/${id}`, { token }),
+  createSubject: (body, token) => request('/api/subjects', { method: 'POST', body, token }),
+  subjectCourses: (id, params, token) => request(`/api/subjects/${id}/courses${queryString(params)}`, { token }),
+  courses: (params, token) => request(`/api/courses${queryString(params)}`, { token }),
+  course: (id, token) => request(`/api/courses/${id}`, { token })
 };
 
 export { API_URL };

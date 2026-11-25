@@ -54,9 +54,19 @@
 - [x] Sign out clears the token and returns to the login screen
 - [x] The localStorage demo login and the shared demo passwords are gone
 
+### Day 9 — Live data in the portals
+- [x] Sample subject and course arrays removed; subject lists read `GET /api/subjects`
+- [x] Server-side search (`q`) plus category and published filters, debounced in the toolbar
+- [x] Pagination controls driven by the API's `totalPages` / `hasNextPage` / `hasPreviousPage`
+- [x] Each subject expands into its courses from `GET /api/subjects/:subjectId/courses`
+- [x] Course outline at `/{role}/courses/:id` with numbered sections and lessons from `GET /api/courses/:id`
+- [x] Loading, empty and error states with retry on every live screen
+- [x] Teacher portal reads `teacher=me`; the developer add-subject form posts to the API
+
 ### Core product features
 - [x] Real signup and login against the API, with role-aware portal routing
-- [x] Student subject selection and discovery
+- [x] Student subject selection and discovery over the live catalogue
+- [x] Paginated subject list with search and filters, and a course outline screen in every portal
 - [x] Sample learning activity feed and progress breakdown
 - [x] Teacher assessment workspace and learner progress view (demo)
 - [x] Developer subject catalogue and user/report views (demo)
@@ -84,4 +94,4 @@
 - Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-The portals still render fictional sample data held in React state, so most in-app changes reset on refresh. Signup, login and the portal routing are real: the frontend calls the API in `server/`, which runs against MongoDB and is tested through an in-memory database. Subject, course and lesson authoring is still API-only — surfacing the Day 7 outline and paginated lists in the UI (Day 9), persisting subject selections and building the teacher authoring screens are the remaining steps.
+Subjects and courses are live: the portals read them from the API (search, filters, pagination and a numbered course outline), and the developer screen writes subjects back. What is still fictional is learner evidence — activity, quiz scores and progress bars are React/localStorage demo data. Subject authoring beyond the create form, plus persisting a student's subject selection on the server, are the remaining steps.

@@ -81,9 +81,9 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Day 9: list and detail screens reading live data — subjects from `GET /api/subjects` and each course's numbered outline from `GET /api/courses/:id`, with the search, filter and pagination parameters the API already accepts.
-2. Show the Day 7 course outline and numbered lessons in the portal instead of the sample course rows.
-3. Replace sample student scores/activity with database-backed events, then role-specific dashboards.
+1. Persist a student's subject selection on the server instead of in `localStorage`.
+2. Replace the sample student scores and activity feed with database-backed lesson progress and submissions.
+3. Teacher authoring screens for courses, sections and lessons — the APIs already exist.
 
 ## What I built and what I understood
 
@@ -129,4 +129,17 @@ The authentication API is implemented and covered by an in-memory MongoDB integr
 - [x] Pagination with `page`, `limit` (max 50) and metadata: `total`, `page`, `limit`, `totalPages`, `hasNextPage`, `hasPreviousPage`
 - [x] Sections and lessons can be added to an existing course, and deleting a subject deletes its courses
 - [x] 7 new course integration tests and 5 query-helper tests; `npm test` → 41 passing
+- See [Day 7 API and test notes](./README-DAY7.md).
+
+## Day 9 — Live catalogue in the portals
+- [x] The sample subject and course arrays are gone; every subject list reads `GET /api/subjects` through `src/hooks/useCatalogue.js`
+- [x] Search (`q`), category and published filters run on the server, debounced by 300 ms
+- [x] Pagination controls built from `totalPages`, `hasNextPage` and `hasPreviousPage`, with a "Showing 1–6 of N" summary
+- [x] A subject card expands into its courses from `GET /api/subjects/:subjectId/courses`
+- [x] Course outline screen at `/{role}/courses/:id`: numbered sections and numbered lessons, using the course-wide `courseNumber` the API derives from array order
+- [x] Loading, empty and error states (with a retry) on every live screen, so an API outage is visible instead of silent
+- [x] The teacher portal asks for `GET /api/subjects?teacher=me`; the developer add-subject form posts to `POST /api/subjects` and refreshes the catalogue
+- [x] Portal URLs stay role-aware: `/student/courses/:id` is reachable only by a student, and the sidebar keeps its section highlighted
+
+The portal shows whatever MongoDB contains, so an empty database shows empty states. Create a subject from the developer portal (or `POST /api/subjects` with a token) to populate the catalogue.
 - See [Day 7 API and test notes](./README-DAY7.md).
