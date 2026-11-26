@@ -2,6 +2,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { LOGIN_MAX_ATTEMPTS } from '../middleware/rateLimit.js';
 
 process.env.JWT_SECRET = 'integration-test-secret-that-is-long-enough';
 process.env.JWT_EXPIRES_IN = '1h';
@@ -30,7 +31,8 @@ async function call(method, path, { token, body } = {}) {
 function remainingOf(response) {
   const header = response.headers.get('ratelimit') || '';
   const match = header.match(/remaining=(\d+)/);
-  return match ? Number(match[1]) : null;
+  assert.ok(match, `expected a RateLimit header, got "${header}"`);
+  return Number(match[1]);
 }
 
 before(async () => {
@@ -115,21 +117,21 @@ test('repeated login attempts are rate limited', async () => {
   let response = await call('POST', '/api/auth/login', {
     body: { email: 'student@example.com', password: 'WrongPass123' }
   });
-  for (let attempt = 0; attempt < 12 && response.status !== 429; attempt += 1) {
+  for (let attempt = 0; attempt < LOGIN_MAX_ATTEMPTS && response.status !== 429; attempt += 1) {
     response = await call('POST', '/api/auth/login', {
       body: { email: 'student@example.com', password: 'WrongPass123' }
     });
   }
   assert.equal(response.status, 429);
   assert.match(response.body.message, /Too many login attempts/);
-  assert.ok(response.headers.get('ratelimit'));
+  assert.equal(remainingOf(response), 0, 'the blocked response should report an exhausted budget');
 });
 
 test('signup is rate limited on failed attempts only', async () => {
   let baselineRemaining = null;
 
-  // Successful signups (more than the limit of 10) must not use up the budget.
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  // Successful signups must not use up the budget.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await call('POST', '/api/auth/signup', {
       body: {
         name: `Signup Limit ${attempt}`,
@@ -144,21 +146,23 @@ test('signup is rate limited on failed attempts only', async () => {
     else assert.equal(remaining, baselineRemaining, 'a successful signup consumed the rate-limit budget');
   }
 
-  // Repeated failed signups (duplicate email) do count and are eventually blocked.
-  let response = await call('POST', '/api/auth/signup', {
-    body: { name: 'Signup Limit', email: 'signup-limit-0@example.com', password: 'StrongPass123' }
-  });
-  assert.equal(response.status, 409);
+  // Failed signups (duplicate email) spend one attempt each. A failed response
+  // reports the budget left after it, so spend exactly that many more and the
+  // very next failure must be blocked.
+  const duplicate = { name: 'Signup Limit', email: 'signup-limit-0@example.com', password: 'StrongPass123' };
+  const firstFailure = await call('POST', '/api/auth/signup', { body: duplicate });
+  assert.equal(firstFailure.status, 409);
 
-  for (let attempt = 0; attempt < 12 && response.status !== 429; attempt += 1) {
-    response = await call('POST', '/api/auth/signup', {
-      body: { name: 'Signup Limit', email: 'signup-limit-0@example.com', password: 'StrongPass123' }
-    });
+  const failuresLeft = remainingOf(firstFailure);
+  for (let attempt = 0; attempt < failuresLeft; attempt += 1) {
+    const response = await call('POST', '/api/auth/signup', { body: duplicate });
+    assert.equal(response.status, 409, `failed signup ${attempt + 2} was not a duplicate rejection`);
   }
 
-  assert.equal(response.status, 429);
-  assert.match(response.body.message, /Too many signup attempts/);
-  assert.ok(response.headers.get('ratelimit'));
+  const blocked = await call('POST', '/api/auth/signup', { body: duplicate });
+  assert.equal(blocked.status, 429);
+  assert.match(blocked.body.message, /Too many signup attempts/);
+  assert.equal(remainingOf(blocked), 0, 'the blocked response should report an exhausted budget');
 });
 
 test('security headers are applied and the JSON body limit is enforced', async () => {
