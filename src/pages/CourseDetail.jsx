@@ -1,14 +1,38 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, Clock, Layers, ListOrdered } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Clock, Layers, ListOrdered, Plus } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SubjectIcon } from '../components/SubjectIcon.jsx';
 import { levelLabel, styleFor } from '../lib/catalogue.js';
+import { useEnrolments } from '../hooks/useEnrolments.js';
 
 /** A course preview: numbered sections and the numbered lessons inside each one. */
 export default function CourseDetail({ courseId, onBack }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [state, setState] = useState({ status: 'loading', course: null, subject: null, error: null });
+  const isStudent = user?.role === 'student';
+  const enrolments = useEnrolments({ enabled: isStudent });
+  const enrolled = enrolments.enrollments.some(item => item.course.id === courseId);
+  const [enrolBusy, setEnrolBusy] = useState(false);
+  const [enrolNotice, setEnrolNotice] = useState('');
+
+  async function toggleEnrolment() {
+    setEnrolBusy(true);
+    setEnrolNotice('');
+    try {
+      if (enrolled) {
+        await enrolments.unenrol(courseId);
+        setEnrolNotice('You left this course.');
+      } else {
+        await enrolments.enrol(courseId);
+        setEnrolNotice('Added to My learning.');
+      }
+    } catch (error) {
+      setEnrolNotice(error.message);
+    } finally {
+      setEnrolBusy(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -79,6 +103,20 @@ export default function CourseDetail({ courseId, onBack }) {
               <Clock size={13} /> {course.totalDurationMinutes} min
             </span>
           </div>
+
+          {isStudent && (
+            <div className="enrol-bar">
+              <button
+                className={'btn ' + (enrolled ? 'secondary' : 'primary')}
+                onClick={toggleEnrolment}
+                disabled={enrolBusy || enrolments.status === 'loading'}
+              >
+                {enrolled ? 'Leave course' : <><Plus size={15} /> Enrol in this course</>}
+              </button>
+              {enrolled && <span className="chip"><Check size={13} /> Enrolled</span>}
+              {enrolNotice && <small className="muted">{enrolNotice}</small>}
+            </div>
+          )}
 
           <p className="outline-note">{course.message}</p>
 

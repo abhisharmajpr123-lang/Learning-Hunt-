@@ -63,6 +63,15 @@
 - [x] Loading, empty and error states with retry on every live screen
 - [x] Teacher portal reads `teacher=me`; the developer add-subject form posts to the API
 
+### Day 10 — Course enrolment on the server
+- [x] `Enrollment` model (`student`, `course`, `subject`, `status`) with a unique student + course index
+- [x] Student-only `POST`/`DELETE /api/courses/:courseId/enroll` and `GET /api/enrollments/mine`
+- [x] Only published courses can be enrolled in; a repeat enrolment is `409` and leaving a course you are not in is `404`
+- [x] `GET /api/enrollments/mine` returns each enrolled course with its subject, level, section and lesson counts and duration
+- [x] `My learning` page in the student portal with loading, empty and error states
+- [x] Enrol / leave control on the course outline screen; enrolment state comes from the server, not localStorage
+- [x] 5 integration tests covering roles, duplicates, unpublished courses, per-student lists and unenrolling
+
 ### Core product features
 - [x] Real signup and login against the API, with role-aware portal routing
 - [x] Student subject selection and discovery over the live catalogue
@@ -72,9 +81,11 @@
 - [x] Developer subject catalogue and user/report views (demo)
 - [x] Real registration and secure authentication
 - [ ] Server-side role-based authorization
-- [ ] MongoDB persistence for users, subjects and selections (users and subjects are stored now; subject selections are still local)
+- [x] MongoDB persistence for users, subjects, courses and course enrolments
+- [ ] Subject interest selection still lives in localStorage beside server-side enrolment
 - [x] Teacher course/lesson authoring through the API (no media upload yet)
-- [ ] Student enrolment and lesson playback tracking
+- [x] Student course enrolment
+- [ ] Lesson playback tracking and server-calculated course progress
 - [ ] Quiz grading, assignment review and test workflows
 - [ ] Server-calculated progress and analytics
 - [ ] PDF certificate generation
@@ -94,4 +105,4 @@
 - Add tests for authentication, enrolment, progress and grading
 
 ## Current implementation note
-Subjects and courses are live: the portals read them from the API (search, filters, pagination and a numbered course outline), and the developer screen writes subjects back. What is still fictional is learner evidence — activity, quiz scores and progress bars are React/localStorage demo data. Subject authoring beyond the create form, plus persisting a student's subject selection on the server, are the remaining steps.
+Subjects, courses and course enrolment are live: the portals read the catalogue from the API, a student can enrol in a published course and see it under My learning, and the developer screen writes subjects back. What is still fictional is learner evidence — activity, quiz scores and progress bars are React/localStorage demo data. Lesson progress, subject authoring screens and moving the subject interest selection server-side are the remaining steps.

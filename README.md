@@ -48,7 +48,7 @@ Signing in needs both processes running: the API on port 4000 and the frontend o
 npm test
 ```
 
-Runs 43 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting (failed attempts only) against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), and a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination) against an in-memory MongoDB.
+Runs 48 tests: signup/login validation, JWT and `requireRole` unit tests, search/pagination helper tests, an integration test that exercises signup → login → protected `/me` → tampered/missing token → rate limiting (failed attempts only) against the real Express app, a second integration test covering the subject CRUD endpoints (401s, ownership 403s, validation 400s, duplicate 409s and 404s), a third covering nested courses, sections and lessons (numbering, empty states, ownership, search, filters and pagination), and a fourth covering course enrolment (student-only access, duplicate and unpublished `409`s, per-student lists and unenrolling) against an in-memory MongoDB.
 
 `npm test` and `npm run build` also run on every push and pull request through GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)).
 
@@ -68,6 +68,7 @@ npm run preview
 - Authentication: bcrypt password hashing and JWT Bearer tokens with server-side `requireAuth` checks; helmet security headers, failed-attempt-only rate limiting on login and signup and `Cache-Control: no-store` on auth responses
 - Frontend session: a small `src/lib/api.js` client, an `AuthProvider` that hydrates from `/api/auth/me`, and react-router-dom routes guarded by `RequireAuth` and `user.role`
 - API: subject CRUD at `/api/subjects` and nested course CRUD at `/api/courses` and `/api/subjects/:subjectId/courses`, all behind `requireAuth`, with owning-teacher-or-developer checks on create, update and delete
+- Student enrolment: `POST`/`DELETE /api/courses/:courseId/enroll` and `GET /api/enrollments/mine`, student-only and backed by a unique `student + course` index
 - Search, filtering and pagination on the subject and course list endpoints, with page metadata (`total`, `page`, `limit`, `totalPages`)
 - Testing: `node --test` with `mongodb-memory-server`
 
@@ -81,9 +82,9 @@ The separate login portals are a demo convenience. In production, the server det
 
 ## Next steps
 
-1. Persist a student's subject selection on the server instead of in `localStorage`.
-2. Replace the sample student scores and activity feed with database-backed lesson progress and submissions.
-3. Teacher authoring screens for courses, sections and lessons — the APIs already exist.
+1. Replace the sample student scores and activity feed with database-backed lesson progress and submissions, starting from the enrolments that now exist.
+2. Teacher authoring screens for courses, sections and lessons — the APIs already exist.
+3. Move the student's subject interest selection into a `subjectSelections` collection; course enrolment is already server-side.
 
 ## What I built and what I understood
 
@@ -143,3 +144,12 @@ The authentication API is implemented and covered by an in-memory MongoDB integr
 
 The portal shows whatever MongoDB contains, so an empty database shows empty states. Create a subject from the developer portal (or `POST /api/subjects` with a token) to populate the catalogue.
 - See [Day 7 API and test notes](./README-DAY7.md).
+
+## Day 10 — Course enrolment on the server
+- [x] `Enrollment` model (`student`, `course`, `subject`, `status`) with a unique `student + course` index
+- [x] Student-only `POST`/`DELETE /api/courses/:courseId/enroll` and `GET /api/enrollments/mine`
+- [x] Only published courses can be enrolled in; a duplicate enrolment is `409` and leaving a course you never joined is `404`
+- [x] `GET /api/enrollments/mine` returns the course summary — subject, level, sections, lessons and duration — for each enrolment
+- [x] `My learning` page in the student portal, with loading, empty and error states
+- [x] Enrol / Leave control on the course outline screen; enrolment state is read from the server on every visit
+- [x] 5 new integration tests; `npm test` → 48 passing

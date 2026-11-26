@@ -10,6 +10,7 @@ import { CourseRow, SubjectBrowser, SubjectCard, SubjectCourses } from './compon
 import { SubjectIcon } from './components/SubjectIcon.jsx';
 import { styleFor } from './lib/catalogue.js';
 import { useCourses, useSubjects } from './hooks/useCatalogue.js';
+import { useEnrolments } from './hooks/useEnrolments.js';
 import { api } from './lib/api.js';
 import { isPortalPage, pageTitle, portalFor } from './lib/portals.js';
 import { Activity, ArrowRight, Award, Bell, BookOpen, Brain, ChartNoAxesCombined, ClipboardCheck, FileText, Flame, GraduationCap, ListChecks, LogOut, Menu, Plus, ShieldCheck, Sparkles, Target, Users, Video, Zap } from 'lucide-react';
@@ -117,6 +118,8 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
   // Live catalogue: published subjects, plus every course of the chosen subjects.
   const catalogue = useSubjects({ published: 'true', limit: 50 });
   const courseFeed = useCourses({ limit: 50 });
+  // Server-side enrolment rows, not a localStorage selection.
+  const learning = useEnrolments();
   const mySubjects = catalogue.subjects.filter(subject => selected.includes(subject.id));
   const myCourses = courseFeed.courses.filter(course => selected.includes(course.subject));
   const subjectFor = course => catalogue.subjects.find(subject => subject.id === course.subject);
@@ -212,6 +215,44 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
             <p className="muted">Choose a subject to see its courses here.</p>
           )}
         </section>
+      </>
+    );
+  }
+
+  if (page === 'learning') {
+    return (
+      <>
+        <Heading
+          tag="YOUR ENROLMENTS"
+          title="My learning"
+          subtitle="Courses you have enrolled in, stored on the server and tied to your account."
+        />
+        {learning.status === 'loading' && <p className="muted">Loading your courses…</p>}
+        {learning.status === 'error' && (
+          <p className="error-notice">
+            {learning.error}{' '}
+            <button className="link-btn" onClick={learning.reload}>Try again</button>
+          </p>
+        )}
+        {learning.status === 'ready' && !learning.enrollments.length && (
+          <Empty
+            title="Nothing enrolled yet"
+            text="Open a course in the catalogue and enrol to see it here."
+            action={() => setPage('discover')}
+          />
+        )}
+        {learning.enrollments.length > 0 && (
+          <section className="panel">
+            {learning.enrollments.map(item => (
+              <CourseRow
+                key={item.id}
+                course={item.course}
+                subject={item.course.subject}
+                onOpen={() => goCourse(item.course.id)}
+              />
+            ))}
+          </section>
+        )}
       </>
     );
   }

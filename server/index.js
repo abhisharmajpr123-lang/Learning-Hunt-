@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import subjectRoutes from './routes/subjects.js';
 import { courseRouter, subjectCourseRouter } from './routes/courses.js';
+import { courseEnrollmentRouter, enrollmentRouter } from './routes/enrollments.js';
 import { getJwtSecret } from './utils/token.js';
 
 const app = express();
@@ -28,7 +29,9 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects/:subjectId/courses', subjectCourseRouter);
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/courses', courseEnrollmentRouter);
 app.use('/api/courses', courseRouter);
+app.use('/api/enrollments', enrollmentRouter);
 app.use((req, res) =>
   res.status(404).json({ success: false, message: `Route ${req.method} ${req.originalUrl} not found.` })
 );

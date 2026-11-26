@@ -61,7 +61,12 @@ export const api = {
   createSubject: (body, token) => request('/api/subjects', { method: 'POST', body, token }),
   subjectCourses: (id, params, token) => request(`/api/subjects/${id}/courses${queryString(params)}`, { token }),
   courses: (params, token) => request(`/api/courses${queryString(params)}`, { token }),
-  course: (id, token) => request(`/api/courses/${id}`, { token })
+  course: (id, token) => request(`/api/courses/${id}`, { token }),
+
+  // Enrolment is student-only on the server; the token decides who it belongs to.
+  enrollments: token => request('/api/enrollments/mine', { token }),
+  enroll: (courseId, token) => request(`/api/courses/${courseId}/enroll`, { method: 'POST', token }),
+  unenroll: (courseId, token) => request(`/api/courses/${courseId}/enroll`, { method: 'DELETE', token })
 };
 
 export { API_URL };

@@ -73,6 +73,9 @@ This is deliberately separate from enrolment: choosing a subject expresses inter
 - `enrolledAt`, optional `completedAt`: Date.
 - Unique compound index: `{ studentId: 1, courseId: 1 }`.
 
+#### enrollments as implemented (Day 10)
+`server/models/Enrollment.js` uses Mongoose field names `student`, `course` and `subject` instead of `studentId`/`courseId`, plus `status` (`active` | `completed`) and timestamps. The unique `{ student: 1, course: 1 }` index is in place. `subject` is denormalised from the course so a learner's enrolment list can name the subject without a second lookup.
+
 ### lessonProgress
 - `studentId`, `lessonId`: ObjectId references.
 - `watchedSeconds`: Number; `completed`: Boolean.

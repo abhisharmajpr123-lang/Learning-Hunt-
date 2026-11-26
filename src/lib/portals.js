@@ -2,6 +2,7 @@ import {
   BookOpen,
   ChartNoAxesCombined,
   ClipboardCheck,
+  GraduationCap,
   LayoutDashboard,
   Search,
   Users
@@ -12,6 +13,7 @@ export const PORTALS = {
     ['overview', 'Overview', LayoutDashboard],
     ['subjects', 'My subjects', BookOpen],
     ['discover', 'Explore subjects', Search],
+    ['learning', 'My learning', GraduationCap],
     ['progress', 'My progress', ChartNoAxesCombined]
   ],
   teacher: [

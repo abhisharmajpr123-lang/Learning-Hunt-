@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
  * Run an API loader whenever its key changes, keeping the previous data visible
  * while a new page or search result is on the way.
  */
-function useAsync(load, key) {
+export function useAsync(load, key) {
   const { token } = useAuth();
   const [state, setState] = useState({ status: 'loading', data: null, error: null });
   const [nonce, setNonce] = useState(0);
