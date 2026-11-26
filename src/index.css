@@ -85,3 +85,37 @@
 /* Enrolment control on the course outline screen. */
 .enrol-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 10px; }
 .enrol-bar .btn { width: auto; }
+
+/* Day 11 · CBSE classes, subject enrolment and syllabus */
+.stat-button{font:inherit;color:inherit;text-align:left;border:1px solid var(--line)}
+.track-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.track-card{display:grid;gap:6px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;color:inherit;transition:box-shadow .18s,transform .18s,border-color .18s}
+.track-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px #28324d0a}
+.track-card.selected{border-color:#9fb0ff;box-shadow:0 0 0 3px #eef1ff}
+.track-card b{font-size:13px}
+.track-card small{font-size:10px;color:#8a95a8;line-height:1.5}
+.track-card em{font-style:normal;font-size:10px;color:#4255ff;font-weight:700}
+.track-badge{width:34px;height:34px;border-radius:9px;background:#eef2ff;color:#4255ff;display:grid;place-items:center}
+.track-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.track-head h2{font-size:18px;margin:0 0 3px}
+.track-head small{color:#8a95a8;font-size:10px}
+.syllabus-units{display:grid;gap:12px}
+.unit-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.unit-card h3{margin:0 0 10px;font-size:13px;color:#4255ff;letter-spacing:.2px}
+.chapter-list{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.chapter-list li{display:flex;gap:9px;align-items:center;font-size:12px;color:#3c4759}
+.chapter-number{width:22px;height:22px;border-radius:50%;background:#f2f4fa;color:#7c879b;display:grid;place-items:center;font-size:9px;font-weight:700;flex:none}
+.syllabus-source{margin-top:16px;font-size:10px}
+.class-chip{background:#fff;border:1px solid #dbe3fb;color:#4b64b2;border-radius:20px;padding:4px 8px;display:inline-flex;align-items:center;gap:4px}
+.change-class-btn{color:#c1762f;font-weight:700}
+.syllabus-subject{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;display:grid;gap:12px}
+.syllabus-subject-head{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.syllabus-subject-head>div{flex:1;min-width:120px}
+.syllabus-subject-head h2{font:800 16px Manrope;color:#2c3850;margin:0 0 3px}
+.syllabus-subject-head small{font-size:10px;color:#8a95a8}
+.screen-view{position:fixed;inset:0;z-index:40;background:#f6f7fb;overflow-y:auto}
+.screen-view-inner{max-width:1120px;margin:0 auto;padding:28px 24px 60px}
+@media(max-width:760px){.screen-view-inner{padding:20px 14px 50px}}
+.syllabus-source a{color:#4255ff}
+@media(max-width:1050px){.track-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:440px){.track-grid{grid-template-columns:1fr}}

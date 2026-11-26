@@ -12,7 +12,7 @@ export default function CourseDetail({ courseId, onBack }) {
   const [state, setState] = useState({ status: 'loading', course: null, subject: null, error: null });
   const isStudent = user?.role === 'student';
   const enrolments = useEnrolments({ enabled: isStudent });
-  const enrolled = enrolments.enrollments.some(item => item.course.id === courseId);
+  const enrolled = enrolments.enrollments.some(item => item.kind === 'course' && item.course.id === courseId);
   const [enrolBusy, setEnrolBusy] = useState(false);
   const [enrolNotice, setEnrolNotice] = useState('');
 

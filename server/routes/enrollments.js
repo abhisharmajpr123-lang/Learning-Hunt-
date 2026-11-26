@@ -4,6 +4,7 @@ import Course from '../models/Course.js';
 import Subject from '../models/Subject.js';
 import Enrollment from '../models/Enrollment.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { serializeSubjectEnrollment } from './curriculum.js';
 
 // Mounted at explicit prefixes so only these paths require a token:
 // /api/courses/:courseId/enroll and /api/enrollments/mine.
@@ -36,6 +37,7 @@ function summarizeCourse(course, subject) {
 function serializeEnrollment(enrollment, course, subject) {
   return {
     id: String(enrollment.id),
+    kind: 'course',
     status: enrollment.status,
     enrolledAt: enrollment.createdAt,
     course: summarizeCourse(course, subject)
@@ -57,23 +59,23 @@ const studentOnly = [requireAuth, requireRole('student')];
 
 enrollmentRouter.get('/mine', studentOnly, run(async (req, res) => {
   const enrollments = await Enrollment.find({ student: req.user.id }).sort({ createdAt: 1 });
+  const courseIds = enrollments.filter(item => item.course).map(item => item.course);
+  const subjectIds = enrollments.filter(item => item.subject).map(item => item.subject);
   const [courses, subjects] = await Promise.all([
-    Course.find({ _id: { $in: enrollments.map(item => item.course) } }),
-    Subject.find({ _id: { $in: enrollments.map(item => item.subject) } })
+    Course.find({ _id: { $in: courseIds } }),
+    Subject.find({ _id: { $in: subjectIds } })
   ]);
   const courseById = new Map(courses.map(course => [String(course.id), course]));
   const subjectById = new Map(subjects.map(subject => [String(subject.id), subject]));
 
-  // A course deleted since enrolment no longer appears in the learner's list.
-  const items = enrollments
-    .filter(enrollment => courseById.has(String(enrollment.course)))
-    .map(enrollment =>
-      serializeEnrollment(
-        enrollment,
-        courseById.get(String(enrollment.course)),
-        subjectById.get(String(enrollment.subject))
-      )
-    );
+  // CBSE subject enrolments need no lookup; a course deleted since enrolment
+  // drops out of the learner's list, as before.
+  const items = enrollments.flatMap(enrollment => {
+    if (!enrollment.course) return [serializeSubjectEnrollment(enrollment)];
+    const course = courseById.get(String(enrollment.course));
+    if (!course) return [];
+    return [serializeEnrollment(enrollment, course, subjectById.get(String(enrollment.subject)))];
+  });
 
   return res.status(200).json({ success: true, count: items.length, total: items.length, enrollments: items });
 }));

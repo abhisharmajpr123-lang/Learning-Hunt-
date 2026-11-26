@@ -66,7 +66,21 @@ export const api = {
   // Enrolment is student-only on the server; the token decides who it belongs to.
   enrollments: token => request('/api/enrollments/mine', { token }),
   enroll: (courseId, token) => request(`/api/courses/${courseId}/enroll`, { method: 'POST', token }),
-  unenroll: (courseId, token) => request(`/api/courses/${courseId}/enroll`, { method: 'DELETE', token })
+  unenroll: (courseId, token) => request(`/api/courses/${courseId}/enroll`, { method: 'DELETE', token }),
+
+  // CBSE curriculum: classes 9-12, JEE and NEET, plus their syllabi.
+  curriculum: token => request('/api/curriculum', { token }),
+  track: (trackId, token) => request(`/api/curriculum/${trackId}`, { token }),
+  syllabus: (trackId, subjectId, token) =>
+    request(`/api/curriculum/${trackId}/${subjectId}`, { token }),
+  enrolSubject: (trackId, subjectId, token) =>
+    request(`/api/curriculum/${trackId}/${subjectId}/enrol`, { method: 'POST', token }),
+  unenrolSubject: (trackId, subjectId, token) =>
+    request(`/api/curriculum/${trackId}/${subjectId}/enrol`, { method: 'DELETE', token }),
+
+  // The study setup saved on the signed-in account (selected subjects and classes).
+  study: token => request('/api/study', { token }),
+  saveStudy: (body, token) => request('/api/study', { method: 'PUT', body, token })
 };
 
 export { API_URL };

@@ -6,11 +6,14 @@ import { useAuth } from './auth/AuthContext.jsx';
 import LoginPage from './pages/Login.jsx';
 import SignupPage from './pages/Signup.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
-import { CourseRow, SubjectBrowser, SubjectCard, SubjectCourses } from './components/Catalogue.jsx';
+import BrowseClasses from './pages/BrowseClasses.jsx';
+import Syllabus from './pages/Syllabus.jsx';
+import { CourseRow, SubjectBrowser, SubjectCard } from './components/Catalogue.jsx';
 import { SubjectIcon } from './components/SubjectIcon.jsx';
 import { styleFor } from './lib/catalogue.js';
 import { useCourses, useSubjects } from './hooks/useCatalogue.js';
 import { useEnrolments } from './hooks/useEnrolments.js';
+import { useTracks } from './hooks/useCurriculum.js';
 import { api } from './lib/api.js';
 import { isPortalPage, pageTitle, portalFor } from './lib/portals.js';
 import { Activity, ArrowRight, Award, Bell, BookOpen, Brain, ChartNoAxesCombined, ClipboardCheck, FileText, Flame, GraduationCap, ListChecks, LogOut, Menu, Plus, ShieldCheck, Sparkles, Target, Users, Video, Zap } from 'lucide-react';
@@ -33,13 +36,17 @@ function Bar({ value }) {
   return <div className="bar"><i style={{ width: value + '%' }} /></div>;
 }
 
-function Stat({ icon: Icon, label, value, note }) {
-  return (
-    <div className="stat">
+function Stat({ icon: Icon, label, value, note, onClick }) {
+  const body = (
+    <>
       <span><Icon size={19} /></span>
       <div><small>{label}</small><b>{value}</b><em>{note}</em></div>
-    </div>
+    </>
   );
+  if (onClick) {
+    return <button type="button" className="stat stat-button" onClick={onClick}>{body}</button>;
+  }
+  return <div className="stat">{body}</div>;
 }
 
 function Heading({ tag, title, subtitle }) {
@@ -86,6 +93,22 @@ function Table({ students }) {
   );
 }
 
+function SubjectRow({ item, onOpen }) {
+  const style = styleFor(item.subject);
+  return (
+    <button type="button" className="course-row course-open" onClick={onOpen}>
+      <span className={'course-symbol ' + style.color}>
+        <SubjectIcon name={style.icon} size={18} />
+      </span>
+      <div className="course-details">
+        <b>{item.subject.name}</b>
+        <small>{item.subject.trackLabel} · CBSE syllabus</small>
+      </div>
+      <ArrowRight size={15} />
+    </button>
+  );
+}
+
 function Empty({ title, text, action }) {
   return (
     <div className="empty">
@@ -97,7 +120,7 @@ function Empty({ title, text, action }) {
   );
 }
 
-function Student({ page, setPage, selected, setSelected, activities, setActivities, completed, setCompleted, rewards, setRewards, goCourse }) {
+function Student({ page, setPage, selected, setSelected, subjectClasses, setSubjectClasses, activities, setActivities, completed, setCompleted, rewards, setRewards, goCourse, goSyllabus }) {
   const today = localDayKey();
   const daily = rewards.daily.date === today ? rewards.daily : { date: today, video: 0, quiz: 0, assignment: 0, test: 0, total: 0 };
   const level = Math.floor(rewards.xp / 250) + 1;
@@ -113,17 +136,25 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
   const masteredTopics = scoredActivities.filter(activity => activity.score >= 90).slice(0, 3);
 
   const [message, setMessage] = useState('');
-  const [openSubjectId, setOpenSubjectId] = useState(null);
+  // Remember which card was opened so returning from a syllabus page keeps its class.
+  const [browseSubjectId, setBrowseSubjectId] = useState(() => loadSaved('learnhunt-browse-subject', null));
+  const [browseChange, setBrowseChange] = useState(false);
+
+  useEffect(() => {
+    if (browseSubjectId) localStorage.setItem('learnhunt-browse-subject', JSON.stringify(browseSubjectId));
+  }, [browseSubjectId]);
 
   // Live catalogue: published subjects, plus every course of the chosen subjects.
   const catalogue = useSubjects({ published: 'true', limit: 50 });
+  // Subjects that exist in the CBSE curriculum; only those get a class picker.
+  const curriculum = useTracks();
+  const cbseSubjectNames = new Set(curriculum.tracks.flatMap(track => track.subjects || []));
   const courseFeed = useCourses({ limit: 50 });
   // Server-side enrolment rows, not a localStorage selection.
   const learning = useEnrolments();
   const mySubjects = catalogue.subjects.filter(subject => selected.includes(subject.id));
   const myCourses = courseFeed.courses.filter(course => selected.includes(course.subject));
   const subjectFor = course => catalogue.subjects.find(subject => subject.id === course.subject);
-  const openSubject = mySubjects.find(subject => subject.id === openSubjectId) || null;
   const toggleSubject = id =>
     setSelected(chosen => (chosen.includes(id) ? chosen.filter(item => item !== id) : [...chosen, id]));
 
@@ -148,7 +179,13 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
     });
   };
 
-  // Sample ids from the old demo catalogue can survive in localStorage; drop anything the API no longer knows.
+  // An enrolment made on another page must show up as soon as My learning opens.
+  useEffect(() => {
+    if (page === 'learning') learning.reload();
+  }, [page, learning.reload]);
+
+  // Ids from an older catalogue (or a deleted subject) can survive in the saved setup;
+  // drop anything the API no longer knows.
   useEffect(() => {
     if (catalogue.status !== 'ready' || !catalogue.subjects.length) return;
     const known = new Set(catalogue.subjects.map(subject => subject.id));
@@ -156,7 +193,37 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
       const next = current.filter(id => known.has(id));
       return next.length === current.length ? current : next;
     });
-  }, [catalogue.status, catalogue.subjects, setSelected]);
+    setSubjectClasses(current => {
+      const next = Object.fromEntries(Object.entries(current).filter(([id]) => known.has(id)));
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+  }, [catalogue.status, catalogue.subjects, setSelected, setSubjectClasses]);
+
+  if (page === 'classes') {
+    // Full-screen syllabus browser, opened from My subjects; back returns to that list.
+    const chosen = subjectClasses[browseSubjectId || 'last'];
+    const browsedCard = catalogue.subjects.find(subject => subject.id === browseSubjectId) || null;
+    return (
+      <div className="screen-view">
+        <div className="screen-view-inner">
+          <BrowseClasses
+            subjectName={browsedCard?.name}
+            trackId={browseChange ? '' : chosen?.trackId || ''}
+            onSelectTrack={track => {
+              setSubjectClasses(previous => ({
+                ...previous,
+                [browseSubjectId || 'last']: { trackId: track.id, label: track.label }
+              }));
+              setBrowseChange(false);
+            }}
+            onChangeClass={() => setBrowseChange(true)}
+            onOpenSyllabus={goSyllabus}
+            onBack={() => setPage('subjects')}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (page === 'discover') {
     return (
@@ -172,6 +239,7 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
           chosenIds={selected}
           onToggle={toggleSubject}
           onOpenCourse={goCourse}
+          coursesPreview={false}
           emptyTitle="No subjects match"
           emptyText="Try a different search term or category."
         />
@@ -186,35 +254,41 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
         {catalogue.status === 'loading' && <p className="muted">Loading your subjects…</p>}
         {catalogue.status === 'error' && <p className="error-notice">{catalogue.error}</p>}
         <div className="subject-grid">
-          {mySubjects.map(subject => (
-            <SubjectCard
-              key={subject.id}
-              subject={subject}
-              chosen
-              onToggle={() => toggleSubject(subject.id)}
-              expanded={openSubjectId === subject.id}
-              onCourses={() => setOpenSubjectId(openSubjectId === subject.id ? null : subject.id)}
-            />
-          ))}
+          {mySubjects.map(subject => {
+            // Computer Science, Web Development and the like have no CBSE syllabus.
+            const hasCbseSyllabus = cbseSubjectNames.has(subject.name);
+            return (
+              <SubjectCard
+                key={subject.id}
+                subject={subject}
+                chosen
+                classLabel={subjectClasses[subject.id]?.label}
+                onToggle={() => toggleSubject(subject.id)}
+                onCourses={
+                  hasCbseSyllabus
+                    ? () => {
+                        setBrowseSubjectId(subject.id);
+                        setBrowseChange(false);
+                        setPage('classes');
+                      }
+                    : undefined
+                }
+                onChangeClass={
+                  hasCbseSyllabus
+                    ? () => {
+                        setBrowseSubjectId(subject.id);
+                        setBrowseChange(true);
+                        setPage('classes');
+                      }
+                    : undefined
+                }
+              />
+            );
+          })}
         </div>
-        {openSubject && (
-          <SubjectCourses subject={openSubject} onOpenCourse={goCourse} onClose={() => setOpenSubjectId(null)} />
-        )}
         {catalogue.status === 'ready' && !mySubjects.length && (
           <Empty title="No subjects selected" text="Explore the catalogue and choose what you would like to study." action={() => setPage('discover')} />
         )}
-        <div className="section-head"><h2>Continue learning</h2></div>
-        <section className="panel">
-          {courseFeed.status === 'loading' && <p className="muted">Loading courses…</p>}
-          {courseFeed.status === 'error' && <p className="error-notice">{courseFeed.error}</p>}
-          {myCourses.length ? (
-            myCourses.map(course => (
-              <CourseRow key={course.id} course={course} subject={subjectFor(course)} onOpen={() => goCourse(course.id)} />
-            ))
-          ) : (
-            <p className="muted">Choose a subject to see its courses here.</p>
-          )}
-        </section>
       </>
     );
   }
@@ -225,7 +299,7 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
         <Heading
           tag="YOUR ENROLMENTS"
           title="My learning"
-          subtitle="Courses you have enrolled in, stored on the server and tied to your account."
+          subtitle="Courses and CBSE subjects you have enrolled in, stored on the server and tied to your account."
         />
         {learning.status === 'loading' && <p className="muted">Loading your courses…</p>}
         {learning.status === 'error' && (
@@ -237,20 +311,28 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
         {learning.status === 'ready' && !learning.enrollments.length && (
           <Empty
             title="Nothing enrolled yet"
-            text="Open a course in the catalogue and enrol to see it here."
-            action={() => setPage('discover')}
+            text="Browse classes 9-12, JEE and NEET, then enrol in a subject to see its CBSE syllabus here."
+            action={() => setPage('classes')}
           />
         )}
         {learning.enrollments.length > 0 && (
           <section className="panel">
-            {learning.enrollments.map(item => (
-              <CourseRow
-                key={item.id}
-                course={item.course}
-                subject={item.course.subject}
-                onOpen={() => goCourse(item.course.id)}
-              />
-            ))}
+            {learning.enrollments.map(item =>
+              item.kind === 'subject' ? (
+                <SubjectRow
+                  key={item.id}
+                  item={item}
+                  onOpen={() => goSyllabus(item.subject.trackId, item.subject.id)}
+                />
+              ) : (
+                <CourseRow
+                  key={item.id}
+                  course={item.course}
+                  subject={item.course.subject}
+                  onOpen={() => goCourse(item.course.id)}
+                />
+              )
+            )}
           </section>
         )}
       </>
@@ -279,7 +361,7 @@ function Student({ page, setPage, selected, setSelected, activities, setActiviti
     <>
       <Heading tag="STUDENT OVERVIEW" title="Good morning, Arjun" subtitle="Keep your curiosity moving. Every completed lesson is progress." />
       <div className="stats-grid">
-        <Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Your learning interests" />
+        <Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Open My subjects" onClick={() => setPage('subjects')} />
         <Stat icon={Video} label="Videos completed" value={completed.length + '/6'} note="Keep your streak going" />
         <Stat icon={ListChecks} label="Quiz average" value="85%" note="Above your 75% target" />
         <Stat icon={ClipboardCheck} label="Assignments" value="7/10" note="3 submissions remaining" />
@@ -703,10 +785,13 @@ function loadSaved(key, fallback) {
 function Portal() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, logout: clearSession } = useAuth();
+  const { user, token, logout: clearSession } = useAuth();
   const role = user?.role || 'student';
   const [mobile, setMobile] = useState(false);
   const [selected, setSelected] = useState(() => loadSaved('learnhunt-selected', []));
+  // The class chosen for each My subjects card; synced to the account below.
+  const [subjectClasses, setSubjectClasses] = useState(() => loadSaved('learnhunt-subject-classes', {}));
+  const [studyReady, setStudyReady] = useState(false);
   const [activities, setActivities] = useState(() => loadSaved('learnhunt-activities', initialActivities));
   const [completed, setCompleted] = useState(() => loadSaved('learnhunt-completed', ['v1', 'v2', 'v3', 'v4']));
   const [rewards, setRewards] = useState(() => loadSaved('learnhunt-rewards', {
@@ -716,7 +801,35 @@ function Portal() {
     daily: { date: localDayKey(), video: 0, quiz: 0, assignment: 0, test: 0, total: 0 }
   }));
 
-  useEffect(() => { localStorage.setItem('learnhunt-selected', JSON.stringify(selected)); }, [selected]);
+  // Restore this account's saved study setup (selected subjects and class picks).
+  useEffect(() => {
+    if (!user?.id || !token) return undefined;
+    let active = true;
+    setStudyReady(false);
+    api
+      .study(token)
+      .then(({ study }) => {
+        // A fresh account keeps whatever this browser already had, ready for the first save.
+        if (!active || (!study.selected.length && !Object.keys(study.classes).length)) return;
+        setSelected(study.selected);
+        setSubjectClasses(study.classes);
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setStudyReady(true); });
+    return () => { active = false; };
+  }, [user?.id, token]);
+
+  // Save changes to the account (and the browser) so signing out keeps them.
+  useEffect(() => {
+    if (!studyReady || !token) return undefined;
+    const timer = setTimeout(() => {
+      localStorage.setItem('learnhunt-selected', JSON.stringify(selected));
+      localStorage.setItem('learnhunt-subject-classes', JSON.stringify(subjectClasses));
+      api.saveStudy({ selected, classes: subjectClasses }, token).catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [studyReady, selected, subjectClasses, token]);
+
   useEffect(() => { localStorage.setItem('learnhunt-activities', JSON.stringify(activities)); }, [activities]);
   useEffect(() => { localStorage.setItem('learnhunt-completed', JSON.stringify(completed)); }, [completed]);
   useEffect(() => { localStorage.setItem('learnhunt-rewards', JSON.stringify(rewards)); }, [rewards]);
@@ -724,13 +837,20 @@ function Portal() {
   const nav = portalFor(role);
   const segments = pathname.split('/').filter(Boolean);
   const isCourseOutline = segments[1] === 'courses' && Boolean(segments[2]);
+  const isSyllabus = segments[1] === 'syllabus' && Boolean(segments[2]) && Boolean(segments[3]);
   const page = segments[1] || 'overview';
-  const allowed = segments[0] === role && (isCourseOutline || isPortalPage(role, page));
-  const title = isCourseOutline ? 'Course outline' : pageTitle(role, page);
+  const allowed = segments[0] === role && (isCourseOutline || isSyllabus || isPortalPage(role, page));
+  const title = isCourseOutline ? 'Course outline' : isSyllabus ? 'Syllabus' : pageTitle(role, page);
   const initials = user.name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
   const setPage = id => navigate(`/${role}/${id}`);
   const goCourse = id => navigate(`/${role}/courses/${id}`);
-  const logout = () => { clearSession(); navigate('/login', { replace: true }); };
+  const goSyllabus = (trackId, subjectId) => navigate(`/${role}/syllabus/${trackId}/${subjectId}`);
+  const logout = () => {
+    // Flush the latest subject/class picks before the session goes away.
+    if (token) api.saveStudy({ selected, classes: subjectClasses }, token).catch(() => {});
+    clearSession();
+    navigate('/login', { replace: true });
+  };
 
   if (!allowed) return <Navigate to={`/${role}/overview`} replace />;
 
@@ -773,12 +893,16 @@ function Portal() {
         <div className="content">
           {isCourseOutline ? (
             <CourseDetail courseId={segments[2]} onBack={() => setPage('subjects')} />
+          ) : isSyllabus ? (
+            <Syllabus trackId={segments[2]} subjectId={segments[3]} onBack={() => setPage('classes')} />
           ) : role === 'student' ? (
             <Student
               page={page}
               setPage={setPage}
               selected={selected}
               setSelected={setSelected}
+              subjectClasses={subjectClasses}
+              setSubjectClasses={setSubjectClasses}
               activities={activities}
               setActivities={setActivities}
               completed={completed}
@@ -786,6 +910,7 @@ function Portal() {
               rewards={rewards}
               setRewards={setRewards}
               goCourse={goCourse}
+              goSyllabus={goSyllabus}
             />
           ) : role === 'teacher' ? (
             <Teacher page={page} setPage={setPage} students={demoStudents} goCourse={goCourse} />

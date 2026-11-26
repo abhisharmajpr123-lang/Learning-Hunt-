@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, GraduationCap, Plus, Search } from 'lucide-react';
 import { SubjectIcon } from './SubjectIcon.jsx';
 import { levelLabel, styleFor } from '../lib/catalogue.js';
 import { useSubjectCourses, useSubjects } from '../hooks/useCatalogue.js';
@@ -28,10 +28,17 @@ export function CourseRow({ course, subject, onOpen }) {
   );
 }
 
-export function SubjectCard({ subject, chosen, onToggle, expanded, onCourses }) {
+export function SubjectCard({ subject, chosen, onToggle, expanded, onCourses, onChangeClass, classLabel }) {
   const style = styleFor(subject);
+  const [classMenu, setClassMenu] = useState(false);
+
+  // Double-click is the shortcut for moving this subject to another class.
+  const revealChangeClass = () => {
+    if (onChangeClass) setClassMenu(open => !open);
+  };
+
   return (
-    <article className="subject-card">
+    <article className="subject-card" onDoubleClick={revealChangeClass}>
       <div className={'subject-art ' + style.color}>
         <span>
           <SubjectIcon name={style.icon} size={26} />
@@ -48,6 +55,11 @@ export function SubjectCard({ subject, chosen, onToggle, expanded, onCourses }) 
           <span>
             <BookOpen size={14} /> {subject.published ? 'Published' : 'Draft'}
           </span>
+          {classLabel && (
+            <span className="class-chip">
+              <GraduationCap size={14} /> {classLabel}
+            </span>
+          )}
         </div>
         <div className="subject-actions">
           {onToggle && (
@@ -63,9 +75,22 @@ export function SubjectCard({ subject, chosen, onToggle, expanded, onCourses }) 
               )}
             </button>
           )}
-          <button className="link-btn" onClick={onCourses}>
-            {expanded ? 'Hide courses' : 'View courses'} <ArrowRight size={14} />
-          </button>
+          {onCourses && (
+            <button className="link-btn" onClick={onCourses}>
+              {expanded ? 'Hide courses' : 'View courses'} <ArrowRight size={14} />
+            </button>
+          )}
+          {onChangeClass && classMenu && (
+            <button
+              className="link-btn change-class-btn"
+              onClick={() => {
+                setClassMenu(false);
+                onChangeClass();
+              }}
+            >
+              Change class
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -118,6 +143,7 @@ export function SubjectBrowser({
   chosenIds = [],
   onToggle,
   onOpenCourse,
+  coursesPreview = true,
   showPublishedFilter = false,
   emptyTitle = 'No subjects found',
   emptyText = 'Try a different search term or category.'
@@ -211,13 +237,15 @@ export function SubjectBrowser({
             subject={subject}
             chosen={chosenIds.includes(subject.id)}
             onToggle={selectable ? () => onToggle(subject.id) : undefined}
-            expanded={openId === subject.id}
-            onCourses={() => setOpenId(openId === subject.id ? null : subject.id)}
+            expanded={coursesPreview && openId === subject.id}
+            onCourses={
+              coursesPreview ? () => setOpenId(openId === subject.id ? null : subject.id) : undefined
+            }
           />
         ))}
       </div>
 
-      {openSubject && (
+      {coursesPreview && openSubject && (
         <SubjectCourses
           subject={openSubject}
           onOpenCourse={onOpenCourse}

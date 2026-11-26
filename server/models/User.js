@@ -5,7 +5,12 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, minlength: 2, maxlength: 60 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
   password: { type: String, required: true, minlength: 8, select: false },
-  role: { type: String, enum: ['student', 'teacher', 'developer'], default: 'student' }
+  role: { type: String, enum: ['student', 'teacher', 'developer'], default: 'student' },
+  // Study setup saved to the account, so signing out and back in restores it.
+  study: {
+    selected: { type: [String], default: [] },
+    classes: { type: mongoose.Schema.Types.Mixed, default: {} }
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function hashPassword() {

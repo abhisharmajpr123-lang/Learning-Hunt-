@@ -28,6 +28,8 @@ export function useEnrolments({ enabled = true } = {}) {
     enrollments: data?.enrollments ?? [],
     total: data?.total ?? 0,
     enrol: courseId => mutate(bearer => api.enroll(courseId, bearer)),
-    unenrol: courseId => mutate(bearer => api.unenroll(courseId, bearer))
+    unenrol: courseId => mutate(bearer => api.unenroll(courseId, bearer)),
+    enrolSubject: (trackId, subjectId) => mutate(bearer => api.enrolSubject(trackId, subjectId, bearer)),
+    unenrolSubject: (trackId, subjectId) => mutate(bearer => api.unenrolSubject(trackId, subjectId, bearer))
   };
 }
