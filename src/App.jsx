@@ -801,7 +801,14 @@ function Portal() {
     daily: { date: localDayKey(), video: 0, quiz: 0, assignment: 0, test: 0, total: 0 }
   }));
 
-  // Restore this account's saved study setup (selected subjects and class picks).
+  // Everything the account keeps: chosen subjects, class picks and learning progress.
+  const studyPayload = () => ({
+    selected,
+    classes: subjectClasses,
+    progress: { completed, activities, rewards }
+  });
+
+  // Restore this account's saved study setup and progress.
   useEffect(() => {
     if (!user?.id || !token) return undefined;
     let active = true;
@@ -810,9 +817,19 @@ function Portal() {
       .study(token)
       .then(({ study }) => {
         // A fresh account keeps whatever this browser already had, ready for the first save.
-        if (!active || (!study.selected.length && !Object.keys(study.classes).length)) return;
+        const hasSaved =
+          study.selected.length ||
+          Object.keys(study.classes).length ||
+          study.completed.length ||
+          study.activities.length ||
+          study.rewards.xp ||
+          study.rewards.streak;
+        if (!active || !hasSaved) return;
         setSelected(study.selected);
         setSubjectClasses(study.classes);
+        setCompleted(study.completed);
+        setActivities(study.activities);
+        setRewards(study.rewards);
       })
       .catch(() => {})
       .finally(() => { if (active) setStudyReady(true); });
@@ -825,10 +842,12 @@ function Portal() {
     const timer = setTimeout(() => {
       localStorage.setItem('learnhunt-selected', JSON.stringify(selected));
       localStorage.setItem('learnhunt-subject-classes', JSON.stringify(subjectClasses));
-      api.saveStudy({ selected, classes: subjectClasses }, token).catch(() => {});
+      api.saveStudy(studyPayload(), token).catch(() => {});
     }, 400);
     return () => clearTimeout(timer);
-  }, [studyReady, selected, subjectClasses, token]);
+    // studyPayload reads these values; it is rebuilt on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studyReady, selected, subjectClasses, completed, activities, rewards, token]);
 
   useEffect(() => { localStorage.setItem('learnhunt-activities', JSON.stringify(activities)); }, [activities]);
   useEffect(() => { localStorage.setItem('learnhunt-completed', JSON.stringify(completed)); }, [completed]);
@@ -846,8 +865,8 @@ function Portal() {
   const goCourse = id => navigate(`/${role}/courses/${id}`);
   const goSyllabus = (trackId, subjectId) => navigate(`/${role}/syllabus/${trackId}/${subjectId}`);
   const logout = () => {
-    // Flush the latest subject/class picks before the session goes away.
-    if (token) api.saveStudy({ selected, classes: subjectClasses }, token).catch(() => {});
+    // Flush the latest picks and progress before the session goes away.
+    if (token) api.saveStudy(studyPayload(), token).catch(() => {});
     clearSession();
     navigate('/login', { replace: true });
   };

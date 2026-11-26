@@ -59,35 +59,72 @@ after(async () => {
   if (mongo) await mongo.stop();
 });
 
-test('a new account starts with an empty study setup', async () => {
-  const response = await call('GET', '/api/study', { token: studentToken });
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body.study, { selected: [], classes: {} });
+test('a new account starts with an empty study setup and no progress', async () => {
+  const { status, body } = await call('GET', '/api/study', { token: studentToken });
+  assert.equal(status, 200);
+  assert.deepEqual(body.study.selected, []);
+  assert.deepEqual(body.study.classes, {});
+  assert.deepEqual(body.study.completed, []);
+  assert.deepEqual(body.study.activities, []);
+  assert.equal(body.study.rewards.xp, 0);
+  assert.equal(body.study.rewards.streak, 0);
+  assert.equal(body.study.rewards.daily.video, 0);
 });
 
-test('saving subjects and class picks returns them on the next visit', async () => {
+test('subjects, class picks and progress all come back on the next visit', async () => {
+  const activity = {
+    id: 1,
+    type: 'video',
+    title: 'Newton’s laws of motion',
+    subject: 'Physics',
+    detail: 'Watched 18 of 22 minutes',
+    date: 'Today',
+    score: null,
+    createdAt: 1730000000000
+  };
   const saved = await call('PUT', '/api/study', {
     token: studentToken,
     body: {
       selected: [SUBJECT_A, SUBJECT_B],
-      classes: { [SUBJECT_A]: { trackId: 'class-11', label: 'Class 11' } }
+      classes: { [SUBJECT_A]: { trackId: 'class-11', label: 'Class 11' } },
+      progress: {
+        completed: ['v1', 'v2'],
+        activities: [activity],
+        rewards: {
+          xp: 120,
+          streak: 3,
+          lastActive: '2026-11-26',
+          daily: { date: '2026-11-26', video: 1, quiz: 0, assignment: 0, test: 0, total: 1 }
+        }
+      }
     }
   });
   assert.equal(saved.status, 200);
-  assert.deepEqual(saved.body.study.selected, [SUBJECT_A, SUBJECT_B]);
+  assert.deepEqual(saved.body.study.completed, ['v1', 'v2']);
+  assert.equal(saved.body.study.rewards.xp, 120);
 
   const reloaded = await call('GET', '/api/study', { token: studentToken });
   assert.deepEqual(reloaded.body.study.selected, [SUBJECT_A, SUBJECT_B]);
   assert.deepEqual(reloaded.body.study.classes[SUBJECT_A], { trackId: 'class-11', label: 'Class 11' });
+  assert.deepEqual(reloaded.body.study.completed, ['v1', 'v2']);
+  assert.deepEqual(reloaded.body.study.activities, [activity]);
+  assert.deepEqual(reloaded.body.study.rewards, {
+    xp: 120,
+    streak: 3,
+    lastActive: '2026-11-26',
+    daily: { date: '2026-11-26', video: 1, quiz: 0, assignment: 0, test: 0, total: 1 }
+  });
 });
 
-test('one student cannot see another student’s study setup', async () => {
+test('one student cannot see another student’s study setup or progress', async () => {
   const other = await call('GET', '/api/study', { token: otherToken });
   assert.equal(other.status, 200);
   assert.deepEqual(other.body.study.selected, []);
+  assert.deepEqual(other.body.study.completed, []);
+  assert.equal(other.body.study.rewards.xp, 0);
 });
 
-test('junk ids and malformed class picks are dropped, and repeats collapse', async () => {
+test('junk ids, malformed picks and impossible counters are dropped', async () => {
   const response = await call('PUT', '/api/study', {
     token: studentToken,
     body: {
@@ -96,12 +133,37 @@ test('junk ids and malformed class picks are dropped, and repeats collapse', asy
         [SUBJECT_B]: { trackId: 'class-9', label: 'Class 9' },
         bad: { trackId: 'class-9', label: 'Class 9' },
         [SUBJECT_A]: { trackId: 'class-11' }
+      },
+      progress: {
+        completed: ['v1', 'v1', '', 7, 'x'.repeat(41)],
+        activities: [
+          { id: 2, type: 'quiz', title: 'Quadratic equations', subject: 'Mathematics', detail: '8 of 10 correct', date: 'Yesterday', score: 80 },
+          { id: 3, type: 'unknown', title: 'Nope' },
+          'not-an-activity'
+        ],
+        rewards: {
+          xp: -50,
+          streak: 2.7,
+          lastActive: '26-11-2026',
+          daily: { date: 'not-a-date', video: 3, quiz: -1, total: 4 }
+        }
       }
     }
   });
+
   assert.equal(response.status, 200);
   assert.deepEqual(response.body.study.selected, [SUBJECT_A]);
   assert.deepEqual(response.body.study.classes, { [SUBJECT_B]: { trackId: 'class-9', label: 'Class 9' } });
+  assert.deepEqual(response.body.study.completed, ['v1']);
+  assert.deepEqual(response.body.study.activities, [
+    { id: 2, type: 'quiz', title: 'Quadratic equations', subject: 'Mathematics', detail: '8 of 10 correct', date: 'Yesterday', score: 80, createdAt: 0 }
+  ]);
+  assert.deepEqual(response.body.study.rewards, {
+    xp: 0,
+    streak: 2,
+    lastActive: null,
+    daily: { date: null, video: 3, quiz: 0, assignment: 0, test: 0, total: 4 }
+  });
 });
 
 test('the study route needs a signed-in account', async () => {
