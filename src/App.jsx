@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Brand from './components/Brand.jsx';
 import RequireAuth from './auth/RequireAuth.jsx';
@@ -8,6 +8,7 @@ import SignupPage from './pages/Signup.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
 import BrowseClasses from './pages/BrowseClasses.jsx';
 import Syllabus from './pages/Syllabus.jsx';
+import UnitVideos from './pages/UnitVideos.jsx';
 import { CourseRow, SubjectBrowser, SubjectCard } from './components/Catalogue.jsx';
 import { SubjectIcon } from './components/SubjectIcon.jsx';
 import { styleFor } from './lib/catalogue.js';
@@ -15,8 +16,9 @@ import { useCourses, useSubjects } from './hooks/useCatalogue.js';
 import { useEnrolments } from './hooks/useEnrolments.js';
 import { useTracks } from './hooks/useCurriculum.js';
 import { api } from './lib/api.js';
+import { hasLocalProgressBeyond, mergeStudy } from './lib/studyMerge.js';
 import { isPortalPage, pageTitle, portalFor } from './lib/portals.js';
-import { Activity, ArrowRight, Award, Bell, BookOpen, Brain, ChartNoAxesCombined, ClipboardCheck, FileText, Flame, GraduationCap, ListChecks, LogOut, Menu, Plus, ShieldCheck, Sparkles, Target, Users, Video, Zap } from 'lucide-react';
+import { Activity, ArrowRight, Award, Bell, BookOpen, Brain, ChartNoAxesCombined, ClipboardCheck, CloudOff, FileText, Flame, GraduationCap, ListChecks, LogOut, Menu, Plus, ShieldCheck, Sparkles, Target, Users, Video, Zap } from 'lucide-react';
 
 const initialActivities = [
   { id: 1, type: 'video', subject: 'Physics', title: 'Newton’s laws of motion', detail: 'Watched 18 of 22 minutes', date: 'Today' },
@@ -31,6 +33,7 @@ const demoStudents = [
   { name: 'Isha Verma', email: 'isha@learnhunt.demo', subjects: 3, progress: 63, quiz: 78, assignments: '6/8' }
 ];
 const roleLabel = role => role[0].toUpperCase() + role.slice(1);
+const firstName = name => (name || '').trim().split(/\s+/)[0] || 'there';
 
 function Bar({ value }) {
   return <div className="bar"><i style={{ width: value + '%' }} /></div>;
@@ -120,7 +123,7 @@ function Empty({ title, text, action }) {
   );
 }
 
-function Student({ page, setPage, selected, setSelected, subjectClasses, setSubjectClasses, activities, setActivities, completed, setCompleted, rewards, setRewards, goCourse, goSyllabus }) {
+function Student({ page, setPage, user, selected, setSelected, subjectClasses, setSubjectClasses, activities, setActivities, completed, setCompleted, rewards, setRewards, goCourse, goSyllabus }) {
   const today = localDayKey();
   const daily = rewards.daily.date === today ? rewards.daily : { date: today, video: 0, quiz: 0, assignment: 0, test: 0, total: 0 };
   const level = Math.floor(rewards.xp / 250) + 1;
@@ -359,7 +362,7 @@ function Student({ page, setPage, selected, setSelected, subjectClasses, setSubj
 
   return (
     <>
-      <Heading tag="STUDENT OVERVIEW" title="Good morning, Arjun" subtitle="Keep your curiosity moving. Every completed lesson is progress." />
+      <Heading tag="STUDENT OVERVIEW" title={'Good morning, ' + firstName(user?.name)} subtitle="Keep your curiosity moving. Every completed lesson is progress." />
       <div className="stats-grid">
         <Stat icon={BookOpen} label="Selected subjects" value={selected.length} note="Open My subjects" onClick={() => setPage('subjects')} />
         <Stat icon={Video} label="Videos completed" value={completed.length + '/6'} note="Keep your streak going" />
@@ -461,7 +464,7 @@ function Student({ page, setPage, selected, setSelected, subjectClasses, setSubj
   );
 }
 
-function Teacher({ page, setPage, students, goCourse }) {
+function Teacher({ page, setPage, user, students, goCourse }) {
   const [type, setType] = useState('Quiz');
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -543,7 +546,7 @@ function Teacher({ page, setPage, students, goCourse }) {
 
   return (
     <>
-      <Heading tag="TEACHER WORKSPACE" title="Good morning, Priya" subtitle="Plan lessons, support learners and see how your classes are progressing." />
+      <Heading tag="TEACHER WORKSPACE" title={'Good morning, ' + firstName(user?.name)} subtitle="Plan lessons, support learners and see how your classes are progressing." />
       <div className="stats-grid">
         <Stat icon={BookOpen} label="Subjects teaching" value={mine.total} note="Your classroom" />
         <Stat icon={Users} label="Active students" value="94" note="Across demo subjects" />
@@ -794,7 +797,16 @@ function Portal() {
   const [selected, setSelected] = useState(() => loadSaved(savedKey('selected'), []));
   // The class chosen for each My subjects card; synced to the account below.
   const [subjectClasses, setSubjectClasses] = useState(() => loadSaved(savedKey('subject-classes'), {}));
-  const [studyReady, setStudyReady] = useState(false);
+  // Saving stays off until this account's saved study has actually loaded.
+  const [studyLoaded, setStudyLoaded] = useState(false);
+  const [studyError, setStudyError] = useState(null);
+  // Bumped by the warning's retry button to run the load again.
+  const [studyAttempt, setStudyAttempt] = useState(0);
+  const latestStudy = useRef(null);
+  // Set when a load for this account failed, so the next one merges instead of
+  // replacing whatever was done in the meantime.
+  const studyFailed = useRef(false);
+  const studyUserId = useRef(null);
   const [activities, setActivities] = useState(() => loadSaved(savedKey('activities'), initialActivities));
   const [completed, setCompleted] = useState(() => loadSaved(savedKey('completed'), ['v1', 'v2', 'v3', 'v4']));
   const [rewards, setRewards] = useState(() => loadSaved(savedKey('rewards'), {
@@ -810,38 +822,86 @@ function Portal() {
     classes: subjectClasses,
     progress: { completed, activities, rewards }
   });
-
-  // Restore this account's saved study setup and progress.
+  // The merge needs the state as it is when the answer arrives, not the render
+  // that started the request.
   useEffect(() => {
-    if (!user?.id || !token) return undefined;
+    latestStudy.current = studyPayload();
+  });
+
+  // Restore this account's saved study setup and progress. Saving is only enabled
+  // once this load succeeds, so a failed request can never replace the account's
+  // own progress with whichever defaults this browser happens to hold.
+  useEffect(() => {
+    if (!user?.id || !token) {
+      setStudyLoaded(false);
+      return undefined;
+    }
     let active = true;
-    setStudyReady(false);
-    api
-      .study(token)
-      .then(({ study }) => {
-        // A fresh account keeps whatever this browser already had, ready for the first save.
-        const hasSaved =
-          study.selected.length ||
-          Object.keys(study.classes).length ||
-          study.completed.length ||
-          study.activities.length ||
-          study.rewards.xp ||
-          study.rewards.streak;
-        if (!active || !hasSaved) return;
-        setSelected(study.selected);
-        setSubjectClasses(study.classes);
-        setCompleted(study.completed);
-        setActivities(study.activities);
-        setRewards(study.rewards);
-      })
-      .catch(() => {})
-      .finally(() => { if (active) setStudyReady(true); });
-    return () => { active = false; };
-  }, [user?.id, token]);
+    let attempt = 0;
+    let timer;
+    setStudyLoaded(false);
+    setStudyError(null);
+    if (studyUserId.current !== user.id) {
+      studyUserId.current = user.id;
+      studyFailed.current = false;
+    }
+
+    const load = () => {
+      api
+        .study(token)
+        .then(({ study }) => {
+          if (!active) return;
+          // A fresh account keeps whatever this browser already had, ready for the first save.
+          const hasSaved =
+            study.selected.length ||
+            Object.keys(study.classes).length ||
+            study.completed.length ||
+            study.activities.length ||
+            study.rewards.xp ||
+            study.rewards.streak;
+          const local = latestStudy.current;
+          // A retry after a failure, or a cache that is ahead of the account,
+          // means this browser holds work the server does not: merge, never replace.
+          const changedLocally =
+            studyFailed.current || hasLocalProgressBeyond(study, local);
+          if (!hasSaved && !changedLocally) return;
+          const next = changedLocally ? mergeStudy(study, local) : study;
+          setSelected(next.selected);
+          setSubjectClasses(next.classes);
+          setCompleted(next.completed);
+          setActivities(next.activities);
+          setRewards(next.rewards);
+          setStudyError(null);
+          studyFailed.current = false;
+        })
+        .then(() => { if (active) setStudyLoaded(true); })
+        .catch(() => {
+          if (!active) return;
+          attempt += 1;
+          // A restarting API answers 401/ECONNREFUSED for a moment; try again
+          // before giving up rather than losing what the account already has.
+          if (attempt < 3) {
+            timer = setTimeout(load, attempt * 1000);
+            return;
+          }
+          studyFailed.current = true;
+          setStudyError('Your saved progress could not be loaded.');
+        });
+    };
+
+    load();
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+    // studyPayload and the merge helpers are rebuilt on every render; this effect
+    // reads them through latestStudy, so it only re-runs for a new account or retry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, token, studyAttempt]);
 
   // Save changes to the account (and the browser) so signing out keeps them.
   useEffect(() => {
-    if (!studyReady || !token) return undefined;
+    if (!studyLoaded || !token) return undefined;
     const timer = setTimeout(() => {
       localStorage.setItem(savedKey('selected'), JSON.stringify(selected));
       localStorage.setItem(savedKey('subject-classes'), JSON.stringify(subjectClasses));
@@ -850,7 +910,7 @@ function Portal() {
     return () => clearTimeout(timer);
     // studyPayload reads these values; it is rebuilt on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studyReady, selected, subjectClasses, completed, activities, rewards, token]);
+  }, [studyLoaded, selected, subjectClasses, completed, activities, rewards, token]);
 
   useEffect(() => { localStorage.setItem(savedKey('activities'), JSON.stringify(activities)); }, [activities]);
   useEffect(() => { localStorage.setItem(savedKey('completed'), JSON.stringify(completed)); }, [completed]);
@@ -860,16 +920,33 @@ function Portal() {
   const segments = pathname.split('/').filter(Boolean);
   const isCourseOutline = segments[1] === 'courses' && Boolean(segments[2]);
   const isSyllabus = segments[1] === 'syllabus' && Boolean(segments[2]) && Boolean(segments[3]);
+  // One unit of that syllabus: /syllabus/:trackId/:subjectId/unit/:index
+  const isUnitVideos =
+    isSyllabus && segments[4] === 'unit' && /^\d+$/.test(segments[5] || '');
   const page = segments[1] || 'overview';
-  const allowed = segments[0] === role && (isCourseOutline || isSyllabus || isPortalPage(role, page));
-  const title = isCourseOutline ? 'Course outline' : isSyllabus ? 'Syllabus' : pageTitle(role, page);
+  const allowed =
+    segments[0] === role &&
+    (isCourseOutline || isUnitVideos || isSyllabus || isPortalPage(role, page));
+  const title = isCourseOutline
+    ? 'Course outline'
+    : isUnitVideos
+      ? 'Unit videos'
+      : isSyllabus
+        ? 'Syllabus'
+        : pageTitle(role, page);
   const initials = user.name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
   const setPage = id => navigate(`/${role}/${id}`);
   const goCourse = id => navigate(`/${role}/courses/${id}`);
   const goSyllabus = (trackId, subjectId) => navigate(`/${role}/syllabus/${trackId}/${subjectId}`);
+  const retryStudy = () => {
+    setStudyError(null);
+    setStudyAttempt(value => value + 1);
+  };
+
   const logout = () => {
-    // Flush the latest picks and progress before the session goes away.
-    if (token) api.saveStudy(studyPayload(), token).catch(() => {});
+    // Flush the latest picks and progress before the session goes away. If the
+    // account's copy never loaded, flushing defaults would overwrite it instead.
+    if (token && studyLoaded) api.saveStudy(studyPayload(), token).catch(() => {});
     clearSession();
     navigate('/login', { replace: true });
   };
@@ -913,14 +990,39 @@ function Portal() {
           </div>
         </header>
         <div className="content">
+          {studyError && (
+            <div className="sync-warning" role="status">
+              <CloudOff size={14} />
+              <span>
+                {studyError} Saving is paused, and anything you do now stays on this device
+                until it reconnects.
+              </span>
+              <button type="button" className="link-btn" onClick={retryStudy}>Try again</button>
+            </div>
+          )}
           {isCourseOutline ? (
             <CourseDetail courseId={segments[2]} onBack={() => setPage('subjects')} />
+          ) : isUnitVideos ? (
+            <UnitVideos
+              trackId={segments[2]}
+              subjectId={segments[3]}
+              unitIndex={Number(segments[5])}
+              onBack={() => navigate(`/${role}/syllabus/${segments[2]}/${segments[3]}`)}
+            />
           ) : isSyllabus ? (
-            <Syllabus trackId={segments[2]} subjectId={segments[3]} onBack={() => setPage('classes')} />
+            <Syllabus
+              trackId={segments[2]}
+              subjectId={segments[3]}
+              onBack={() => setPage('classes')}
+              onOpenUnit={index =>
+                navigate(`/${role}/syllabus/${segments[2]}/${segments[3]}/unit/${index}`)
+              }
+            />
           ) : role === 'student' ? (
             <Student
               page={page}
               setPage={setPage}
+              user={user}
               selected={selected}
               setSelected={setSelected}
               subjectClasses={subjectClasses}
@@ -935,7 +1037,7 @@ function Portal() {
               goSyllabus={goSyllabus}
             />
           ) : role === 'teacher' ? (
-            <Teacher page={page} setPage={setPage} students={demoStudents} goCourse={goCourse} />
+            <Teacher page={page} setPage={setPage} user={user} students={demoStudents} goCourse={goCourse} />
           ) : (
             <Developer page={page} setPage={setPage} students={demoStudents} user={user} goCourse={goCourse} />
           )}

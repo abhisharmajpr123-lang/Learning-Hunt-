@@ -73,6 +73,10 @@ export const api = {
   track: (trackId, token) => request(`/api/curriculum/${trackId}`, { token }),
   syllabus: (trackId, subjectId, token) =>
     request(`/api/curriculum/${trackId}/${subjectId}`, { token }),
+  unit: (trackId, subjectId, unitIndex, token) =>
+    request(`/api/curriculum/${trackId}/${subjectId}/units/${unitIndex}`, { token }),
+  unitVideos: (trackId, subjectId, unitIndex, token) =>
+    request(`/api/curriculum/${trackId}/${subjectId}/units/${unitIndex}/videos`, { token }),
   enrolSubject: (trackId, subjectId, token) =>
     request(`/api/curriculum/${trackId}/${subjectId}/enrol`, { method: 'POST', token }),
   unenrolSubject: (trackId, subjectId, token) =>

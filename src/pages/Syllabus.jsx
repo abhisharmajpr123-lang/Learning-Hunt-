@@ -1,10 +1,10 @@
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 import { SubjectIcon } from '../components/SubjectIcon.jsx';
 import { styleFor } from '../lib/catalogue.js';
 import { useSyllabus } from '../hooks/useCurriculum.js';
 
 /** The CBSE syllabus for one class + subject, unit by unit. */
-export default function Syllabus({ trackId, subjectId, onBack }) {
+export default function Syllabus({ trackId, subjectId, onBack, onOpenUnit }) {
   const { status, error, reload, syllabus } = useSyllabus(trackId, subjectId);
   const chapterTotal = syllabus
     ? syllabus.units.reduce((sum, unit) => sum + unit.chapters.length, 0)
@@ -42,9 +42,21 @@ export default function Syllabus({ trackId, subjectId, onBack }) {
           </header>
 
           <div className="syllabus-units">
-            {syllabus.units.map(unit => (
+            {syllabus.units.map((unit, unitIndex) => (
               <section className="unit-card" key={unit.title}>
-                <h3>{unit.title}</h3>
+                {/* A heading may not wrap a heading, so the button carries the text. */}
+                <h3>
+                  {onOpenUnit ? (
+                    <button type="button" className="unit-open" onClick={() => onOpenUnit(unitIndex)}>
+                      <span>{unit.title}</span>
+                      <span className="unit-open-hint">
+                        Watch videos <ChevronRight size={14} />
+                      </span>
+                    </button>
+                  ) : (
+                    unit.title
+                  )}
+                </h3>
                 <ol className="chapter-list">
                   {unit.chapters.map((chapter, index) => (
                     <li key={chapter}>

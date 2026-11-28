@@ -31,6 +31,43 @@ export function useTrack(trackId) {
   };
 }
 
+export function useUnit(trackId, subjectId, unitIndex) {
+  const key = trackId && subjectId && unitIndex != null ? `${trackId}:${subjectId}:${unitIndex}` : '';
+  const remote = useAsync(
+    token => (key ? api.unit(trackId, subjectId, unitIndex, token) : Promise.resolve(null)),
+    key
+  );
+  const data = remote.data;
+
+  return {
+    status: remote.status,
+    error: remote.error,
+    reload: remote.reload,
+    unit: data?.unit ?? null,
+    track: data?.track ?? null,
+    subject: data?.subject ?? null
+  };
+}
+
+/** The unit's YouTube lessons: one search, started alongside the unit header. */
+export function useUnitVideos(trackId, subjectId, unitIndex) {
+  const ready = Boolean(trackId && subjectId) && unitIndex != null;
+  const key = ready ? `${trackId}:${subjectId}:${unitIndex}` : '';
+  const remote = useAsync(
+    token => (ready ? api.unitVideos(trackId, subjectId, unitIndex, token) : Promise.resolve(null)),
+    key
+  );
+  const data = remote.data;
+
+  return {
+    status: remote.status,
+    error: remote.error,
+    reload: remote.reload,
+    videos: data?.videos ?? [],
+    searchUrl: data?.searchUrl ?? null
+  };
+}
+
 export function useSyllabus(trackId, subjectId) {
   const key = trackId && subjectId ? `${trackId}:${subjectId}` : '';
   const remote = useAsync(
