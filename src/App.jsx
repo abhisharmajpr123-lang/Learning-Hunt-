@@ -787,14 +787,17 @@ function Portal() {
   const { pathname } = useLocation();
   const { user, token, logout: clearSession } = useAuth();
   const role = user?.role || 'student';
+  // The local cache is namespaced per account: signing in as someone else on this
+  // browser must never inherit the previous student's subjects or progress.
+  const savedKey = name => `learnhunt-${user?.id || 'anonymous'}-${name}`;
   const [mobile, setMobile] = useState(false);
-  const [selected, setSelected] = useState(() => loadSaved('learnhunt-selected', []));
+  const [selected, setSelected] = useState(() => loadSaved(savedKey('selected'), []));
   // The class chosen for each My subjects card; synced to the account below.
-  const [subjectClasses, setSubjectClasses] = useState(() => loadSaved('learnhunt-subject-classes', {}));
+  const [subjectClasses, setSubjectClasses] = useState(() => loadSaved(savedKey('subject-classes'), {}));
   const [studyReady, setStudyReady] = useState(false);
-  const [activities, setActivities] = useState(() => loadSaved('learnhunt-activities', initialActivities));
-  const [completed, setCompleted] = useState(() => loadSaved('learnhunt-completed', ['v1', 'v2', 'v3', 'v4']));
-  const [rewards, setRewards] = useState(() => loadSaved('learnhunt-rewards', {
+  const [activities, setActivities] = useState(() => loadSaved(savedKey('activities'), initialActivities));
+  const [completed, setCompleted] = useState(() => loadSaved(savedKey('completed'), ['v1', 'v2', 'v3', 'v4']));
+  const [rewards, setRewards] = useState(() => loadSaved(savedKey('rewards'), {
     xp: 0,
     streak: 0,
     lastActive: null,
@@ -840,8 +843,8 @@ function Portal() {
   useEffect(() => {
     if (!studyReady || !token) return undefined;
     const timer = setTimeout(() => {
-      localStorage.setItem('learnhunt-selected', JSON.stringify(selected));
-      localStorage.setItem('learnhunt-subject-classes', JSON.stringify(subjectClasses));
+      localStorage.setItem(savedKey('selected'), JSON.stringify(selected));
+      localStorage.setItem(savedKey('subject-classes'), JSON.stringify(subjectClasses));
       api.saveStudy(studyPayload(), token).catch(() => {});
     }, 400);
     return () => clearTimeout(timer);
@@ -849,9 +852,9 @@ function Portal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studyReady, selected, subjectClasses, completed, activities, rewards, token]);
 
-  useEffect(() => { localStorage.setItem('learnhunt-activities', JSON.stringify(activities)); }, [activities]);
-  useEffect(() => { localStorage.setItem('learnhunt-completed', JSON.stringify(completed)); }, [completed]);
-  useEffect(() => { localStorage.setItem('learnhunt-rewards', JSON.stringify(rewards)); }, [rewards]);
+  useEffect(() => { localStorage.setItem(savedKey('activities'), JSON.stringify(activities)); }, [activities]);
+  useEffect(() => { localStorage.setItem(savedKey('completed'), JSON.stringify(completed)); }, [completed]);
+  useEffect(() => { localStorage.setItem(savedKey('rewards'), JSON.stringify(rewards)); }, [rewards]);
 
   const nav = portalFor(role);
   const segments = pathname.split('/').filter(Boolean);
